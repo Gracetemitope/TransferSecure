@@ -2,23 +2,24 @@ import fastify, {} from 'fastify';
 import * as client from 'openid-client';
 import fastifySession from '@fastify/session';
 import fastifyCookie from '@fastify/cookie';
-import { CognitoUserPool, CognitoUserAttribute, CognitoUser, } from 'amazon-cognito-identity-js';
+import { CognitoUserPool, CognitoUserAttribute, CognitoUser } from 'amazon-cognito-identity-js';
 import 'dotenv/config';
 const server = fastify();
 server.register(fastifyCookie);
-server.register(fastifySession, { secret: process.env.SESSION_SECRET_KEY, cookie: {
-        secure: false
-    } });
+server.register(fastifySession, {
+    secret: process.env.SESSION_SECRET_KEY,
+    cookie: {
+        secure: false,
+    },
+});
 server.get('/ping', async (request, reply) => {
     return 'pong\n';
 });
 var poolData = {
-    UserPoolId: 'us-east-1_jEDZdMqE9', // Your user pool id here
-    ClientId: process.env.CLIENT_ID // Your client id here
+    UserPoolId: process.env.USER_POOL_ID, // Your user pool id here
+    ClientId: process.env.CLIENT_ID, // Your client id here
 };
 var userPool = new CognitoUserPool(poolData);
-let user;
-const openIdServer = "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_jEDZdMqE9";
 const url = new URL(process.env.SERVER);
 let config = await client.discovery(url, process.env.CLIENT_ID, process.env.CLIENT_SECRET);
 server.listen({ port: 8080 }, (err, address) => {
@@ -48,48 +49,36 @@ server.get('/', { preHandler: authHandler }, (request, reply) => {
     // }
     reply.send(isAuthentcated);
 });
-server.post('/login', async (request, reply) => {
-    // let redirect_uri: string = "https://d84l1y8p4kdic.cloudfront.net"
-    // let scope: string =  'email openid phone'
-    // let code_verifier: string = client.randomPKCECodeVerifier()
-    // let code_challenge: string = await client.calculatePKCECodeChallenge(code_verifier)
-    // let state!: string
-    // let parameters: Record<string, string> = {
-    //   redirect_uri,
-    //   scope,
-    //   code_challenge,
-    //   code_challenge_method: 'S256',
-    // }
-    // if (!config.serverMetadata().supportsPKCE()) {
-    //   /**
-    //    * We cannot be sure the server supports PKCE so we're going to use state too.
-    //    * Use of PKCE is backwards compatible even if the AS doesn't support it which
-    //    * is why we're using it regardless. Like PKCE, random state must be generated
-    //    * for every redirect to the authorization_endpoint.
-    //    */
-    //   state = client.randomState()
-    //   parameters.state = state
-    // }
-    // const  redirectTo:URL = client.buildAuthorizationUrl(config, parameters)
-    // // now redirect the user to redirectTo.href
-    // console.log('redirecting to', redirectTo.href)
-    var attributeList = [];
-    // console.log(request.body)
+server.post('/register', async (request, reply) => {
+    console.log(request);
     const { email, password } = request.body;
-    let emailVariable = {
-        "Name": 'email',
-        'Value': email
-    };
-    var attributeEmail = new CognitoUserAttribute(emailVariable);
-    attributeList.push(attributeEmail);
-    userPool.signUp(email, password, attributeList, [], function (err, result) {
+    userPool.signUp(email, password, [], [], (err, result) => {
         if (err) {
-            // alert(err.message || JSON.stringify(err));
             console.log(err);
-            return;
+            return reply.status(500).send('Error registering user');
         }
-        var cognitoUser = result.user;
-        console.log('user name is ' + cognitoUser.getUsername());
+        const cognitoUser = result.user;
+        console.log('User registered successfully:', cognitoUser.getUsername());
+        reply.send('User registered successfully');
     });
+});
+server.post('/login', async (request, reply) => {
+    // var attributeList = [];
+    // const { email, password } = request.body as loginData;
+    // let emailVariable = {
+    //     Name: 'email',
+    //     Value: email,
+    // };
+    // var attributeEmail = new CognitoUserAttribute(emailVariable);
+    // attributeList.push(attributeEmail);
+    // userPool.signUp(email, password, attributeList, [], function (err, result) {
+    //     if (err) {
+    //         console.log(err);
+    //         return;
+    //     }
+    //     var cognitoUser = result!.user;
+    //     console.log('user name is ' + cognitoUser.getUsername());
+    // });
+    const { email, password } = request.body;
 });
 //# sourceMappingURL=index.js.map
