@@ -12,6 +12,7 @@ import {
 import { CookieStorage, defaultStorage } from 'aws-amplify/utils';
 import { Amplify } from 'aws-amplify';
 import { fetchAuthSession, signIn, signUp } from 'aws-amplify/auth';
+import crypto from 'crypto';
 import 'dotenv/config';
 
 const server = fastify();
@@ -36,14 +37,14 @@ Amplify.configure({
 //     credentials: true,
 // });
 
+function generateUserName(email: string): string {
+    const raw = email.toLowerCase();
+    return crypto.createHash('sha256').update(raw).digest('hex').slice(0, 32);
+}
+
 server.get('/ping', async (request, reply) => {
     return 'pong\n';
 });
-
-interface authenticateInfo {
-    email: string;
-    password: string;
-}
 
 server.post(
     '/register',
@@ -57,7 +58,7 @@ server.post(
                     lastName: { type: 'string', minLength: 1 },
                     email: { type: 'string', format: 'email' },
                     password: { type: 'string', minLength: 8 },
-                    zoneinfo: { type: 'string', minLength: 3 },
+                    zoneinfo: { type: 'string', minLength: 2 },
                 },
             },
         },
@@ -72,8 +73,10 @@ server.post(
         };
 
         try {
+            const userName = generateUserName(email);
+
             const result = await signUp({
-                username: firstName,
+                username: userName,
                 password: password,
                 options: {
                     userAttributes: {
@@ -84,9 +87,15 @@ server.post(
                     },
                 },
             });
-            reply.code(200).send(result);
+
+            reply.code(200).send({
+                success: true,
+                result: result,
+            });
         } catch (err) {
             let message = 'Unknown error';
+
+            console.log(err);
 
             if ((err as Error).name === 'UsernameExistsException') {
                 message = 'Email already registered';
@@ -96,9 +105,11 @@ server.post(
                 message = 'Invalid verification code';
             } else if ((err as Error).name === 'ExpiredCodeException') {
                 message = 'Verification code expired';
+            } else {
+                message = (err as Error).name;
             }
 
-            reply.code(400).send({ error: (err as Error).message, details: message });
+            reply.code(400).send({ success: false, error: (err as Error).message, details: message });
         }
     },
 );
@@ -121,7 +132,11 @@ server.post('/confirm', async (request, reply) => {
                 console.log('Successfully signed in.');
             }
         }
-        reply.code(200).send(result);
+        return reply.code(200).send({
+            success: true,
+            message: result.isSignUpComplete ? 'User confirmed successfully.' : 'Further steps required.',
+            data: { nextStep: result.nextStep?.signUpStep ?? 'DONE' },
+        });
     } catch (err) {
         let message = '';
         switch (err) {
@@ -133,7 +148,7 @@ server.post('/confirm', async (request, reply) => {
                 break;
         }
         console.error('Signup error:', JSON.stringify(err, null, 2));
-        reply.code(400).send({ error: message });
+        reply.code(400).send({ code: (err as Error).name, error: message });
     }
 });
 
@@ -191,7 +206,10 @@ server.post('/login', async (request, reply) => {
                     userId: userId,
                 };
 
-                return reply.code(200).send(tokens);
+                return reply.code(200).send({
+                    success: true,
+                    result: tokens,
+                });
             }
         }
 
@@ -206,7 +224,10 @@ server.post('/login', async (request, reply) => {
                 userId: userId,
             };
 
-            return reply.code(200).send(tokens);
+            return reply.code(200).send({
+                success: true,
+                result: tokens,
+            });
         }
 
         return reply.code(400).send({

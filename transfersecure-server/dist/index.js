@@ -3,6 +3,7 @@ import { autoSignIn, cognitoUserPoolsTokenProvider, confirmSignIn, confirmSignUp
 import { CookieStorage, defaultStorage } from 'aws-amplify/utils';
 import { Amplify } from 'aws-amplify';
 import { fetchAuthSession, signIn, signUp } from 'aws-amplify/auth';
+import crypto from 'crypto';
 import 'dotenv/config';
 const server = fastify();
 cognitoUserPoolsTokenProvider.setKeyValueStorage(new CookieStorage());
@@ -22,6 +23,11 @@ Amplify.configure({
 //     allowedHeaders: ['Content-Type', 'Authorization'],
 //     credentials: true,
 // });
+function generateUserName(email) {
+    // const raw = `${firstName}${lastName}${email}`.toLowerCase();
+    const raw = email.toLowerCase();
+    return crypto.createHash('sha256').update(raw).digest('hex').slice(0, 32);
+}
 server.get('/ping', async (request, reply) => {
     return 'pong\n';
 });
@@ -35,15 +41,16 @@ server.post('/register', {
                 lastName: { type: 'string', minLength: 1 },
                 email: { type: 'string', format: 'email' },
                 password: { type: 'string', minLength: 8 },
-                zoneinfo: { type: 'string', minLength: 3 },
+                zoneinfo: { type: 'string', minLength: 2 },
             },
         },
     },
 }, async (request, reply) => {
     const { firstName, lastName, email, password, zoneinfo } = request.body;
     try {
+        const userName = generateUserName(email);
         const result = await signUp({
-            username: firstName,
+            username: userName,
             password: password,
             options: {
                 userAttributes: {
@@ -57,8 +64,28 @@ server.post('/register', {
         reply.code(200).send(result);
     }
     catch (err) {
-        console.error('Signup error:', JSON.stringify(err, null, 2));
-        reply.code(400).send({ error: err.message, details: err });
+        let message = 'Unknown error';
+        console.log(err);
+        if (err.name === 'UsernameExistsException') {
+            message = 'Email already registered';
+        }
+        else if (err.name === 'InvalidPasswordException') {
+            message = 'Password does not meet complexity requirements';
+        }
+        // else if ((err as Error).name === 'FST_ERR_VALIDATION') {
+        //     message =
+        //         'Password does not meet complexity requirements. Password must NOT have fewer than 8 characters';
+        // }
+        else if (err.name === 'CodeMismatchException') {
+            message = 'Invalid verification code';
+        }
+        else if (err.name === 'ExpiredCodeException') {
+            message = 'Verification code expired';
+        }
+        else {
+            message = err.name;
+        }
+        reply.code(400).send({ error: err.message, details: message });
     }
 });
 server.post('/confirm', async (request, reply) => {
@@ -76,7 +103,11 @@ server.post('/confirm', async (request, reply) => {
                 console.log('Successfully signed in.');
             }
         }
-        reply.code(200).send(result);
+        return reply.code(200).send({
+            success: true,
+            message: result.isSignUpComplete ? 'User confirmed successfully.' : 'Further steps required.',
+            data: { nextStep: result.nextStep?.signUpStep ?? 'DONE' },
+        });
     }
     catch (err) {
         let message = '';
@@ -89,7 +120,7 @@ server.post('/confirm', async (request, reply) => {
                 break;
         }
         console.error('Signup error:', JSON.stringify(err, null, 2));
-        reply.code(400).send({ error: message });
+        reply.code(400).send({ code: err.name, error: message });
     }
 });
 server.post('/resend-confirmation', async (request, reply) => {
