@@ -70,7 +70,7 @@ function Register() {
                     <input className="w-full px-3 py-2 border rounded-md" name="password" type="password" placeholder="Password" value={formState.password} onChange={handleChange} /><br></br><br></br>
                     <button className="w-full primary-bg-color h-10 text-white rounded-md" type="submit">Create Account</button>
                 </form>
-                <p className="text-center  mt-10 text-gray-700">Already have an account? <Link to="/auth/signin" className="primary-text-color">Sign in</Link></p>
+                <p className="text-center  mt-10 text-gray-700">Already have an account? <Link to="/login" className="primary-text-color">Sign in</Link></p>
         </div>
     )
 }
