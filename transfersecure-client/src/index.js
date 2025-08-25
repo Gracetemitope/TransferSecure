@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
 import Register from "./auth/Register";
 import Login from "./auth/Login";
 import Test from "./components/Test"
+import ConfirmEmail from "./auth/ConfirmEmail";
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
@@ -16,6 +17,7 @@ root.render(
             <Route path="/register" element={< Register />} />
             <Route path="/login" element={< Login />} />
             <Route path="/test" element={<Test />} />
+            <Route path="confirm" element={<ConfirmEmail />} />
         </Routes>
   </BrowserRouter>
 );
