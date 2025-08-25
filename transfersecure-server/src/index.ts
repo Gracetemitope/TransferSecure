@@ -2,11 +2,13 @@ import fastify from 'fastify';
 import {
     autoSignIn,
     cognitoUserPoolsTokenProvider,
+    confirmResetPassword,
     confirmSignIn,
     confirmSignUp,
     deleteUser,
     getCurrentUser,
     resendSignUpCode,
+    resetPassword,
     signOut,
 } from 'aws-amplify/auth/cognito';
 import { CookieStorage, defaultStorage } from 'aws-amplify/utils';
@@ -267,6 +269,47 @@ server.post('/delete-account', async (request, reply) => {
         reply.code(200).send({ success: true });
     } catch (err) {
         reply.code(500).send({ error: (err as Error).message, success: false });
+    }
+});
+
+server.post('/forgot-password', async (request, reply) => {
+    const { email, confirmationCode, newPassword } = request.body as {
+        email: string;
+        confirmationCode?: string;
+        newPassword?: string;
+    };
+
+    try {
+        if (!confirmationCode) {
+            const output = await resetPassword({ username: email });
+            const { nextStep } = output;
+
+            if (nextStep.resetPasswordStep === 'CONFIRM_RESET_PASSWORD_WITH_CODE') {
+                return reply.code(200).send({
+                    success: true,
+                    step: 'CODE_SENT',
+                    delivery: nextStep.codeDeliveryDetails,
+                });
+            }
+        } else {
+            if (!newPassword) {
+                return reply.code(400).send({ success: false, error: 'newPassword is required' });
+            }
+
+            await confirmResetPassword({
+                username: email,
+                confirmationCode: confirmationCode,
+                newPassword: newPassword,
+            });
+
+            return reply.code(200).send({
+                success: true,
+                step: 'DONE',
+                message: 'Password reset successfully',
+            });
+        }
+    } catch (err) {
+        return reply.code(500).send({ success: false, error: (err as Error).message });
     }
 });
 

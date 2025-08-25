@@ -1,5 +1,5 @@
 import fastify from 'fastify';
-import { autoSignIn, cognitoUserPoolsTokenProvider, confirmSignIn, confirmSignUp, deleteUser, getCurrentUser, resendSignUpCode, signOut, } from 'aws-amplify/auth/cognito';
+import { autoSignIn, cognitoUserPoolsTokenProvider, confirmResetPassword, confirmSignIn, confirmSignUp, deleteUser, getCurrentUser, resendSignUpCode, resetPassword, signOut, } from 'aws-amplify/auth/cognito';
 import { CookieStorage, defaultStorage } from 'aws-amplify/utils';
 import { Amplify } from 'aws-amplify';
 import { fetchAuthSession, signIn, signUp } from 'aws-amplify/auth';
@@ -220,6 +220,40 @@ server.post('/delete-account', async (request, reply) => {
     }
     catch (err) {
         reply.code(500).send({ error: err.message, success: false });
+    }
+});
+server.post('/forgot-password', async (request, reply) => {
+    const { email, confirmationCode, newPassword } = request.body;
+    try {
+        if (!confirmationCode) {
+            const output = await resetPassword({ username: email });
+            const { nextStep } = output;
+            if (nextStep.resetPasswordStep === 'CONFIRM_RESET_PASSWORD_WITH_CODE') {
+                return reply.code(200).send({
+                    success: true,
+                    step: 'CODE_SENT',
+                    delivery: nextStep.codeDeliveryDetails,
+                });
+            }
+        }
+        else {
+            if (!newPassword) {
+                return reply.code(400).send({ success: false, error: 'newPassword is required' });
+            }
+            await confirmResetPassword({
+                username: email,
+                confirmationCode: confirmationCode,
+                newPassword: newPassword,
+            });
+            return reply.code(200).send({
+                success: true,
+                step: 'DONE',
+                message: 'Password reset successfully',
+            });
+        }
+    }
+    catch (err) {
+        return reply.code(500).send({ success: false, error: err.message });
     }
 });
 server.listen({ port: 8080 }, (err, address) => {
