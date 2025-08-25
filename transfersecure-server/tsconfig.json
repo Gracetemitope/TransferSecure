@@ -21,8 +21,6 @@
     "declarationMap": true,
 
     // Stricter Typechecking Options
-    "noUncheckedIndexedAccess": true,
-    "exactOptionalPropertyTypes": true,
 
     // Style Options
     // "noImplicitReturns": true,
@@ -31,7 +29,8 @@
     // "noUnusedParameters": true,
     // "noFallthroughCasesInSwitch": true,
     // "noPropertyAccessFromIndexSignature": true,
-
+    "allowSyntheticDefaultImports": true,
+    "esModuleInterop": true,
     // Recommended Options
     "strict": true,
     "jsx": "react-jsx",

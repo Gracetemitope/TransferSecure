@@ -2,9 +2,12 @@
   "main": "index.ts",
   "type": "module",
   "dependencies": {
+    "@aws-amplify/auth": "^6.15.0",
     "@aws-sdk/client-cognito-identity-provider": "^3.873.0",
     "@fastify/cookie": "^11.0.2",
+    "@fastify/cors": "^11.1.0",
     "@fastify/session": "^11.1.0",
+    "@fastify/type-provider-typebox": "^5.2.0",
     "amazon-cognito-identity-js": "^6.3.15",
     "aws-amplify": "^6.15.5",
     "aws-sdk": "^2.1692.0",
