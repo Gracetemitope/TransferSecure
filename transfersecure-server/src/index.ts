@@ -13,9 +13,17 @@ import { CookieStorage, defaultStorage } from 'aws-amplify/utils';
 import { Amplify } from 'aws-amplify';
 import { fetchAuthSession, signIn, signUp } from 'aws-amplify/auth';
 import crypto from 'crypto';
+import cors from '@fastify/cors';
 import 'dotenv/config';
 
 const server = fastify();
+
+await server.register(cors as any, {
+    origin: ['http://localhost:3001'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
+});
 
 cognitoUserPoolsTokenProvider.setKeyValueStorage(new CookieStorage());
 cognitoUserPoolsTokenProvider.setKeyValueStorage(defaultStorage);
@@ -29,13 +37,6 @@ Amplify.configure({
         },
     },
 });
-
-// server.register(fastifyCors, {
-//     origin: ['https://yourfrontend.com'], // whitelist
-//     methods: ['GET', 'POST', 'PUT', 'DELETE'],
-//     allowedHeaders: ['Content-Type', 'Authorization'],
-//     credentials: true,
-// });
 
 function generateUserName(email: string): string {
     const raw = email.toLowerCase();
@@ -90,7 +91,7 @@ server.post(
 
             reply.code(200).send({
                 success: true,
-                result: result,
+                data: { username: userName },
             });
         } catch (err) {
             let message = 'Unknown error';
@@ -148,7 +149,7 @@ server.post('/confirm', async (request, reply) => {
                 break;
         }
         console.error('Signup error:', JSON.stringify(err, null, 2));
-        reply.code(400).send({ code: (err as Error).name, error: message });
+        reply.code(400).send({ code: (err as Error).name, error: message, success: false });
     }
 });
 
@@ -160,10 +161,13 @@ server.post('/resend-confirmation', async (request, reply) => {
         const result = await resendSignUpCode({
             username: email,
         });
-        reply.code(200).send(result);
+        reply.code(200).send({
+            success: true,
+            data: result,
+        });
     } catch (err) {
         console.error('Resend confirmation error:', JSON.stringify(err, null, 2));
-        reply.code(400).send({ error: (err as Error).message });
+        reply.code(400).send({ error: (err as Error).message, success: false });
     }
 });
 
@@ -235,29 +239,34 @@ server.post('/login', async (request, reply) => {
             message: result.nextStep.signInStep,
         });
     } catch (err) {
-        reply.code(401).send({ error: (err as Error).message });
+        reply.code(401).send({ error: (err as Error).message, success: false });
     }
 });
 
 server.post('/sign-out', async (request, reply) => {
     await signOut({ global: true });
+    reply.code(200).send({ success: true });
 });
 
 server.post('/refresh-token', async (request, reply) => {
     try {
         const result = await fetchAuthSession({ forceRefresh: true });
 
-        reply.code(200).send(result);
+        reply.code(200).send({
+            success: true,
+            data: result,
+        });
     } catch (err) {
-        reply.code(401).send({ error: (err as Error).message });
+        reply.code(401).send({ error: (err as Error).message, success: false });
     }
 });
 
 server.post('/delete-account', async (request, reply) => {
     try {
         await deleteUser();
+        reply.code(200).send({ success: true });
     } catch (err) {
-        reply.code(500).send({ error: (err as Error).message });
+        reply.code(500).send({ error: (err as Error).message, success: false });
     }
 });
 

@@ -4,8 +4,15 @@ import { CookieStorage, defaultStorage } from 'aws-amplify/utils';
 import { Amplify } from 'aws-amplify';
 import { fetchAuthSession, signIn, signUp } from 'aws-amplify/auth';
 import crypto from 'crypto';
+import cors from '@fastify/cors';
 import 'dotenv/config';
 const server = fastify();
+await server.register(cors, {
+    origin: ['http://localhost:3001'],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
+    credentials: true,
+});
 cognitoUserPoolsTokenProvider.setKeyValueStorage(new CookieStorage());
 cognitoUserPoolsTokenProvider.setKeyValueStorage(defaultStorage);
 Amplify.configure({
@@ -17,14 +24,7 @@ Amplify.configure({
         },
     },
 });
-// server.register(fastifyCors, {
-//     origin: ['https://yourfrontend.com'], // whitelist
-//     methods: ['GET', 'POST', 'PUT', 'DELETE'],
-//     allowedHeaders: ['Content-Type', 'Authorization'],
-//     credentials: true,
-// });
 function generateUserName(email) {
-    // const raw = `${firstName}${lastName}${email}`.toLowerCase();
     const raw = email.toLowerCase();
     return crypto.createHash('sha256').update(raw).digest('hex').slice(0, 32);
 }
@@ -61,7 +61,10 @@ server.post('/register', {
                 },
             },
         });
-        reply.code(200).send(result);
+        reply.code(200).send({
+            success: true,
+            data: { username: userName },
+        });
     }
     catch (err) {
         let message = 'Unknown error';
@@ -72,10 +75,6 @@ server.post('/register', {
         else if (err.name === 'InvalidPasswordException') {
             message = 'Password does not meet complexity requirements';
         }
-        // else if ((err as Error).name === 'FST_ERR_VALIDATION') {
-        //     message =
-        //         'Password does not meet complexity requirements. Password must NOT have fewer than 8 characters';
-        // }
         else if (err.name === 'CodeMismatchException') {
             message = 'Invalid verification code';
         }
@@ -85,7 +84,7 @@ server.post('/register', {
         else {
             message = err.name;
         }
-        reply.code(400).send({ error: err.message, details: message });
+        reply.code(400).send({ success: false, error: err.message, details: message });
     }
 });
 server.post('/confirm', async (request, reply) => {
@@ -120,7 +119,7 @@ server.post('/confirm', async (request, reply) => {
                 break;
         }
         console.error('Signup error:', JSON.stringify(err, null, 2));
-        reply.code(400).send({ code: err.name, error: message });
+        reply.code(400).send({ code: err.name, error: message, success: false });
     }
 });
 server.post('/resend-confirmation', async (request, reply) => {
@@ -130,11 +129,14 @@ server.post('/resend-confirmation', async (request, reply) => {
         const result = await resendSignUpCode({
             username: email,
         });
-        reply.code(200).send(result);
+        reply.code(200).send({
+            success: true,
+            data: result,
+        });
     }
     catch (err) {
         console.error('Resend confirmation error:', JSON.stringify(err, null, 2));
-        reply.code(400).send({ error: err.message });
+        reply.code(400).send({ error: err.message, success: false });
     }
 });
 server.post('/login', async (request, reply) => {
@@ -166,7 +168,10 @@ server.post('/login', async (request, reply) => {
                     userName: username,
                     userId: userId,
                 };
-                return reply.code(200).send(tokens);
+                return reply.code(200).send({
+                    success: true,
+                    result: tokens,
+                });
             }
         }
         if (result.isSignedIn) {
@@ -178,7 +183,10 @@ server.post('/login', async (request, reply) => {
                 userName: username,
                 userId: userId,
             };
-            return reply.code(200).send(tokens);
+            return reply.code(200).send({
+                success: true,
+                result: tokens,
+            });
         }
         return reply.code(400).send({
             error: 'CHALLENGE_REQUIRED',
@@ -186,27 +194,32 @@ server.post('/login', async (request, reply) => {
         });
     }
     catch (err) {
-        reply.code(401).send({ error: err.message });
+        reply.code(401).send({ error: err.message, success: false });
     }
 });
 server.post('/sign-out', async (request, reply) => {
     await signOut({ global: true });
+    reply.code(200).send({ success: true });
 });
 server.post('/refresh-token', async (request, reply) => {
     try {
         const result = await fetchAuthSession({ forceRefresh: true });
-        reply.code(200).send(result);
+        reply.code(200).send({
+            success: true,
+            data: result,
+        });
     }
     catch (err) {
-        reply.code(401).send({ error: err.message });
+        reply.code(401).send({ error: err.message, success: false });
     }
 });
 server.post('/delete-account', async (request, reply) => {
     try {
         await deleteUser();
+        reply.code(200).send({ success: true });
     }
     catch (err) {
-        reply.code(500).send({ error: err.message });
+        reply.code(500).send({ error: err.message, success: false });
     }
 });
 server.listen({ port: 8080 }, (err, address) => {
