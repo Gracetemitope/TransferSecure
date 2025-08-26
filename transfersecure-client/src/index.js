@@ -4,10 +4,12 @@ import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
-import Register from "./auth/Register";
-import Login from "./auth/Login";
+import Register from "./pages/authPages/Register";
+import Login from "./pages/authPages/Login";
 import Test from "./components/Test"
-import ConfirmEmail from "./auth/ConfirmEmail";
+import ConfirmEmail from "./pages/authPages/ConfirmEmail";
+import ForgotPassword from "./pages/authPages/ForgotPassword";
+import ResetPassword from "./pages/authPages/ResetPassword";
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
@@ -18,6 +20,9 @@ root.render(
             <Route path="/login" element={< Login />} />
             <Route path="/test" element={<Test />} />
             <Route path="confirm" element={<ConfirmEmail />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+
         </Routes>
   </BrowserRouter>
 );
