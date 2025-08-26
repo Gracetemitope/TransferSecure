@@ -57,7 +57,7 @@ function Login() {
                         <input  className="w-full py-2 pl-2 border-0" type="password" name="password" placeholder="Password" value={formData.password} onChange={handleChange} />
                     </div>
                     <div className="flex justify-end">
-                        <Link to="/auth/signin" className="primary-text-color mb-4">Forgot Password?</Link>
+                        <Link to="/forgot-password" className="primary-text-color mb-4">Forgot Password?</Link>
                     </div>
                     <button className="w-full primary-bg-color h-10 text-white rounded-md" type="submit">Sign In</button>
                     <p className="text-center  mt-10 text-gray-700">New to Transfer Secure?<Link to="/register" className="primary-text-color"> Create account</Link></p>
