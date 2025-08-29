@@ -16,12 +16,14 @@ function Register() {
     const [showConfirm, setShowConfirm] = useState(false);
     const [showPassword, setShowPassword] = useState(true);
     const navigate = useNavigate();
+    const [loading, setLoading] = useState(false);
 
     const handleChange = (e) => {
         setFormState({ ...formState, [e.target.name]: e.target.value })
     }
     const handleSubmit = async (e) => {
         e.preventDefault()
+        setLoading(true);
         try {
             const response = await fetch("http://localhost:8080/register", {
                 method: "POST",
@@ -49,12 +51,14 @@ function Register() {
 
         } catch (error) {
             console.log(error)
+        } finally {
+            setLoading(false);
         }
     }
     return (
         <div className={`flex flex-col items-center justify-center min-h-screen bg-white`}>
-            <div className={`${showConfirm ? "blur-sm" : ""} w-full`}>
             <main className="flex-grow flex items-center justify-center">
+            <div className={`${showConfirm ? "blur-sm" : ""} w-full`}>
 
             <div className="w-full max-w-md p-6">
                 <div className="flex justify-center mb-6">
@@ -129,7 +133,7 @@ function Register() {
                         className="w-full py-3 text-white bg-indigo-800 rounded-full hover:bg-indigo-900 transition"
                         type="submit"
                     >
-                        Create account
+                        {loading ? "Creating..." : "Create Account"}
                     </button>
                 </form>
                 <p className="text-center mt-6 text-gray-700">
@@ -142,9 +146,9 @@ function Register() {
                     </Link>
                 </p>
             </div>
+            </div>
             </main>
             <AuthFooter />
-            </div>
             {showConfirm && (
                 <div className="absolute inset-0 flex items-center justify-center z-50">
                     <ConfirmEmail

@@ -10,12 +10,14 @@ function Login() {
         password: "",
     })
     const [showPassword, setShowPassword] = useState(false);
+    const [loading, setLoading] = useState(false);
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
     }
     const handleSubmit = async e => {
         e.preventDefault();
+        setLoading(true);
         try {
             const response = await fetch("http://[::1]:8080/login", {
                 method: "POST",
@@ -40,6 +42,8 @@ function Login() {
 
         } catch (error) {
             console.log(error);
+        } finally {
+            setLoading(false);
         }
     }
     return (
@@ -85,7 +89,7 @@ function Login() {
                     <div className="flex justify-end">
                         <Link to="/forgot-password" className="text-sm text-indigo-600 hover:underline">Forgot Password?</Link>
                     </div>
-                    <button className="w-full py-3 text-white bg-indigo-800 rounded-full hover:bg-indigo-900 transition" type="submit">Sign In</button>
+                    <button className="w-full py-3 text-white bg-indigo-800 rounded-full hover:bg-indigo-900 transition" type="submit">{ loading ? "Signing in..." : "SignIn"}</button>
                     <p className="text-center  mt-6 text-gray-700 mb-10">New to Transfer Secure?<Link to="/register" className="text-indigo-600 hover:underline"> Create account</Link></p>
                 </form>
             </div>
