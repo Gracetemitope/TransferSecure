@@ -1,5 +1,7 @@
 import {useState} from "react";
 import {Link, useNavigate} from "react-router-dom";
+import Logo from "../../assets/Logo.png"
+import AuthFooter from "./AuthFooter";
 
 function Register() {
     const [formState, setFormState] = useState({
@@ -10,6 +12,7 @@ function Register() {
         country: "",
     })
     const [username, setUsername] = useState("");
+    const [showPassword, setShowPassword] = useState(true);
     const navigate = useNavigate();
 
     const handleChange = (e) => {
@@ -46,31 +49,97 @@ function Register() {
         }
     }
     return (
-        <div className="!flex flex-row md:flex-col h-screen">
-            <div className= "p-16 mt-16 flex-1">
-                    <p className="text-lg p-1 text-gray-600 font-bold">Transfer Secure</p>
+        <div className="flex flex-col items-center justify-center min-h-screen bg-white">
+            <main className="flex-grow flex items-center justify-center">
+
+            <div className="w-full max-w-md p-6">
+                <div className="flex justify-center mb-6">
+                <img src={Logo} alt="logo" className="h-10" />
                 </div>
-                <h1 className="text-2xl mt-8 ml-0 font-sans font-bold mb-4">Create an Account</h1>
-                <form onSubmit={handleSubmit}>
-                    <div className="flex flex-row justify-between">
-                        <div className="flex-1">
-                            <label htmlFor="firstName">First Name</label><br></br>
-                            <input className="w-full px-3 py-2 border rounded-md" name="firstName" type="text" placeholder="First name" value={formState.firstName} onChange={handleChange} />
-                        </div>
-                        <div className="flex-1 mb-3 ml-4">
-                            <label htmlFor="lastName">Last Name</label><br></br>
-                            <input className="w-full px-3 py-2 border rounded-md" name="lastName" type="text" placeholder="Last name" value={formState.lastName} onChange={handleChange} />
-                        </div>
+                <h1 className="text-2xl mt-8 text-center font-sans font-bold mb-4">Create a new Account</h1>
+                <p className="mt-2 text-center text-gray-500">
+                    Enter your details below to register
+                </p>
+                <form onSubmit={handleSubmit} className="mt-8 space-y-4">
+                    <div className="flex space-x-4">
+                        <input
+                            className="w-1/2 px-4 py-3 rounded-full bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            name="firstName"
+                            type="text"
+                            placeholder="First name"
+                            value={formState.firstName}
+                            onChange={handleChange}
+                            required
+                        />
+                        <input
+                            className="w-1/2 px-4 py-3 rounded-full bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            name="lastName"
+                            type="text"
+                            placeholder="Last name"
+                            value={formState.lastName}
+                            onChange={handleChange}
+                            required
+                        />
                     </div>
-                    <label htmlFor="country">Country</label><br></br>
-                    <input className="w-full px-3 py-2 border rounded-md" name="country" type="text" placeholder="Country" value={formState.country} onChange={handleChange} /><br></br><br></br>
-                    <label htmlFor="email">Email</label><br></br>
-                    <input className="w-full px-3 py-2 border rounded-md" name="email" type="email" placeholder="e.g account@email.com" value={formState.email} onChange={handleChange} /><br></br><br></br>
-                    <label htmlFor="password">Password</label><br></br>
-                    <input className="w-full px-3 py-2 border rounded-md" name="password" type="password" placeholder="Password" value={formState.password} onChange={handleChange} /><br></br><br></br>
-                    <button className="w-full primary-bg-color h-10 text-white rounded-md" type="submit">Create Account</button>
+
+                    <input
+                        className="w-full px-4 py-3 rounded-full bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        name="country"
+                        type="text"
+                        placeholder="Country"
+                        value={formState.country}
+                        onChange={handleChange}
+                        required
+                    />
+
+                    <input
+                        className="w-full px-4 py-3 rounded-full bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        name="email"
+                        type="email"
+                        placeholder="Email address"
+                        value={formState.email}
+                        onChange={handleChange}
+                        required
+                    />
+
+                    <div className="relative">
+                        <input
+                            type={showPassword ? "text" : "password"}
+                            name="password"
+                            placeholder="Password"
+                            value={formState.password}
+                            onChange={handleChange}
+                            required
+                            className="w-full px-4 py-3 rounded-full bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                        />
+                        <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-4 top-1/2 transform -translate-y-1/2 text-sm text-gray-500"
+                        >
+                            {showPassword ? "HIDE" : "SHOW"}
+                        </button>
+                    </div>
+
+                    <button
+                        className="w-full py-3 text-white bg-indigo-800 rounded-full hover:bg-indigo-900 transition"
+                        type="submit"
+                    >
+                        Create account
+                    </button>
                 </form>
-                <p className="text-center  mt-10 text-gray-700">Already have an account? <Link to="/login" className="primary-text-color">Sign in</Link></p>
+                <p className="text-center mt-6 text-gray-700">
+                    Already have an account?{" "}
+                    <Link
+                        to="/login"
+                        className="text-indigo-600 hover:underline font-medium"
+                    >
+                        Sign In
+                    </Link>
+                </p>
+            </div>
+            </main>
+            <AuthFooter />
         </div>
     )
 }
