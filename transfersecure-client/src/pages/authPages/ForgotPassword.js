@@ -1,10 +1,11 @@
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import {Link, useNavigate} from "react-router-dom";
 import Logo from "../../assets/Logo.png";
 import AuthFooter from "./AuthFooter";
 
 function ForgotPassword() {
     const [email, setEmail] = useState("");
+    const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
@@ -12,6 +13,7 @@ function ForgotPassword() {
         handleForgotPassword(email);
     };
     const handleForgotPassword = async (email) => {
+        setLoading(true);
         try {
             const response = await fetch("http://localhost:8080/forgot-password", {
                 method: "POST",
@@ -28,6 +30,8 @@ function ForgotPassword() {
             }
         } catch (error) {
             alert("Something went wrong. Please try again");
+        } finally {
+            setLoading(false);
         }
     };
 
@@ -53,8 +57,9 @@ function ForgotPassword() {
                     required
                 />
                 <button type="submit" className="w-full py-3 text-white bg-indigo-800 rounded-full hover:bg-indigo-900 transition">
-                    Send Reset Code
+                    { loading ? "Sending Reset Code..." : "Send Reset Code" }
                 </button>
+                <p className="text-center  mt-6 text-gray-700 mb-10">New to Transfer Secure?<Link to="/register" className="text-indigo-600 hover:underline"> Create account</Link></p>
             </form>
                 </div>
             </main>

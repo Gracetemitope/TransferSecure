@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import Logo from "../../assets/Logo.png";
+import AuthFooter from "./AuthFooter";
 
 function ResetPassword() {
     const [confirmationCode, setConfirmationCode] = useState("");
@@ -41,22 +43,25 @@ function ResetPassword() {
     };
 
     return (
-        <div className="flex items-center justify-center w-full min-h-screen bg-gray-100">
-            <form
-                onSubmit={handleSubmit}
-                className="bg-white rounded-2xl shadow-md w-96 p-6"
-            >
-                <h2 className="text-xl font-bold mb-4">Reset Password</h2>
-                <p className="text-sm text-gray-600 mb-4">
-                    Reset password for <strong>{email}</strong>
-                </p>
+        <div className="flex flex-col items-center justify-center min-h-screen bg-white">
+            <main className="flex-grow flex items-center justify-center">
+                <div className= "w-full max-w-md flex flex-col items-center">
+                    <div className={"flex justify-center"}>
+                        <img src={Logo} alt="logo" className="h-10" />
+                    </div>
+                    <h1 className="text-2xl mt-5 font-sans font-bold text-center text-[#353535] ">Reset Your Password</h1>
+                    <p className="mt-2 text-center text-gray-500">
+                        Enter the verification code sent to your email and new password
+                    </p>
+                    <form onSubmit={handleSubmit} className="mt-8 space-y-4">
+
 
                 <input
                     type="text"
                     placeholder="Enter reset code"
                     value={confirmationCode}
                     onChange={(e) => setConfirmationCode(e.target.value)}
-                    className="border p-2 w-full mb-4 rounded"
+                    className="w-full px-4 py-3 rounded-full bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     required
                 />
 
@@ -65,17 +70,20 @@ function ResetPassword() {
                     placeholder="New password"
                     value={newPassword}
                     onChange={(e) => setNewPassword(e.target.value)}
-                    className="border p-2 w-full mb-4 rounded"
+                    className="w-full px-4 py-3 rounded-full bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     required
                 />
 
                 <button
                     type="submit"
-                    className="w-full bg-green-500 text-white py-2 rounded-lg"
+                    className="w-full py-3 text-white bg-indigo-800 rounded-full hover:bg-indigo-900 transition"
                 >
                     Reset Password
                 </button>
             </form>
+                </div>
+                </main>
+            <AuthFooter />
         </div>
     );
 }
