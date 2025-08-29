@@ -61,8 +61,8 @@ function ConfirmEmail({ username, email, onClose }) {
             const data = await response.json();
             console.log(data);
             if(response.ok && data.success) {
-                alert("Email confirmed successfully! You can now login");
-                navigate("/login");
+                alert("Email confirmed successfully");
+                navigate("/");
             } else {
                 alert("Something went wrong!");
             }
