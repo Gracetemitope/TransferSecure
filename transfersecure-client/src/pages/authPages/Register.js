@@ -41,7 +41,6 @@ function Register() {
             const data = await response.json()
             console.log(data)
             if(response.ok && data.success) {
-                alert("Sign up successfully, Please check your email for verification code")
                 setUsername(data.data.username)
                 setShowConfirm(true)
                 console.log(response)

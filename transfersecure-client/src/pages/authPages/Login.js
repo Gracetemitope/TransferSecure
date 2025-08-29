@@ -32,7 +32,6 @@ function Login() {
             })
             const data = await response.json();
             if (response.ok && data.success) {
-                alert("Login successfully");
                 localStorage.setItem("username", data.result.userName);
                 navigate("/");
             } else {
