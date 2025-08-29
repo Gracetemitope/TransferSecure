@@ -2,6 +2,7 @@ import {useState} from "react";
 import {Link, useNavigate} from "react-router-dom";
 import Logo from "../../assets/Logo.png"
 import AuthFooter from "./AuthFooter";
+import ConfirmEmail from "./ConfirmEmail";
 
 function Register() {
     const [formState, setFormState] = useState({
@@ -12,6 +13,7 @@ function Register() {
         country: "",
     })
     const [username, setUsername] = useState("");
+    const [showConfirm, setShowConfirm] = useState(false);
     const [showPassword, setShowPassword] = useState(true);
     const navigate = useNavigate();
 
@@ -38,7 +40,8 @@ function Register() {
             console.log(data)
             if(response.ok && data.success) {
                 alert("Sign up successfully, Please check your email for verification code")
-                navigate("/confirm", {state: {username: data.data.username}})
+                setUsername(data.data.username)
+                setShowConfirm(true)
                 console.log(response)
             } else {
                 alert("Sign up failed")
@@ -140,6 +143,12 @@ function Register() {
             </div>
             </main>
             <AuthFooter />
+            {showConfirm && (
+                <ConfirmEmail
+                    username={username}
+                    onClose={() => setShowConfirm(false)}
+                />
+            )}
         </div>
     )
 }
