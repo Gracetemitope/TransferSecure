@@ -1,7 +1,7 @@
 import {useEffect, useRef, useState} from "react";
 import {useNavigate} from "react-router-dom";
 
-function ConfirmEmail({ username, onClose }) {
+function ConfirmEmail({ username, email, onClose }) {
     const [confirmationCode, setConfirmationCode] = useState(new Array(6).fill(""));
     const navigate = useNavigate();
     const inputsRef = useRef([]);
@@ -85,7 +85,7 @@ function ConfirmEmail({ username, onClose }) {
                 <h1 className="text-2xl font-bold mb-4">Confirm Your Email</h1>
                 <p className="text-sm text-gray-600 mb-4">
                     Enter 6-digit OTP code sent to{" "}
-                    <span className="font-semibold text-blue-600">{username}</span>
+                    <span className="font-semibold text-blue-600">{email}</span>
                 </p>
                 <form onSubmit={handleConfirmation}>
                     <div className="flex justify-center gap-2 mb-6">
@@ -98,6 +98,7 @@ function ConfirmEmail({ username, onClose }) {
                                 value={digit}
                                 onChange={(e) => handleChange(e.target.value, i)}
                                 onKeyDown={(e) => handleKeyDown(e, i)}
+                                onPaste={handlePaste}
                                 className="w-10 h-12 border rounded-md text-center text-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                             />
                         ))}

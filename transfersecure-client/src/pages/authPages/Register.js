@@ -52,7 +52,8 @@ function Register() {
         }
     }
     return (
-        <div className="flex flex-col items-center justify-center min-h-screen bg-white">
+        <div className={`flex flex-col items-center justify-center min-h-screen bg-white`}>
+            <div className={`${showConfirm ? "blur-sm" : ""} w-full`}>
             <main className="flex-grow flex items-center justify-center">
 
             <div className="w-full max-w-md p-6">
@@ -143,11 +144,15 @@ function Register() {
             </div>
             </main>
             <AuthFooter />
+            </div>
             {showConfirm && (
-                <ConfirmEmail
-                    username={username}
-                    onClose={() => setShowConfirm(false)}
-                />
+                <div className="absolute inset-0 flex items-center justify-center z-50">
+                    <ConfirmEmail
+                        username={username}
+                        email={formState.email}
+                        onClose={() => setShowConfirm(false)}
+                    />
+                </div>
             )}
         </div>
     )
