@@ -10,6 +10,7 @@ import Test from "./components/Test"
 import ConfirmEmail from "./pages/authPages/ConfirmEmail";
 import ForgotPassword from "./pages/authPages/ForgotPassword";
 import ResetPassword from "./pages/authPages/ResetPassword";
+import TransferFile from "./pages/TransferFile";
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
@@ -22,7 +23,7 @@ root.render(
             <Route path="confirm" element={<ConfirmEmail />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
-
+            <Route path="/transfer" element={<TransferFile />} />
         </Routes>
   </BrowserRouter>
 );
