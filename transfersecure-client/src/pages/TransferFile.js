@@ -1,6 +1,7 @@
 import Sidebar from "../components/Layout/SideBar";
 import Navbar from "../components/Layout/NavBar";
 import BreadCrumb from "../components/BreadCrumb";
+import fileIcon from "../assets/File.png"
 
 function TransferFile() {
     return (
@@ -15,7 +16,44 @@ function TransferFile() {
                         { label: "Upload file"}
                     ]}
                 />
+                <div className={"bg-white rounded-lg shadow p-6"}>
+                    <div className={"grid gird-cols-1 md:grid-cols-2 gap-6"}>
+                        <div className={"space-y-4"}>
+                            <input
+                                type="text"
+                                placeholder="File name"
+                                className={"w-full rounded-full border border-gray-200 px-4 py-3 focus:outline-none focus:shadow-outline"}
+                                />
+                            <input
+                                type="email"
+                                placeholder="Recipient's email address"
+                                className="w-full rounded-full border border-gray-200 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            />
+                            <select
+                                className="w-full rounded-full border border-gray-200 px-4 py-3 text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <option>Select file duration</option>
+                                <option>1 day</option>
+                                <option>7 days</option>
+                                <option>30 days</option>
+                            </select>
+                        </div>
+                        <div className={"flex flex-col items-center justify-center border-2 border-dashed bg-[#F6F5FF] border-[#211A94]" }>
+                                <img src={fileIcon} className={""}></img>
+                                <p className={"font-medium text-gray-700 text-center"}>Add File Here</p>
+                                <p className={"text-sm text-gray-500 text-center"}>
+                                    Or <span className={"text-[#211A94] cursor-pointer"}>Browse</span> files from computer to continue
+                                </p>
+                        </div>
+                    </div>
+                    <div>
 
+                    </div>
+                </div>
+                <div className="mt-6 flex justify-end">
+                <button className="bg-[#211A94] text-white px-11 py-3 rounded-full hover:bg-indigo-800 transition ml-80">
+                    Transfer File
+                </button>
+                </div>
             </main>
                 </div>
         </div>
