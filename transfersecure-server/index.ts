@@ -17,7 +17,7 @@ import crypto from 'crypto';
 import cors from '@fastify/cors';
 import 'dotenv/config';
 import multipart, { type MultipartFile } from '@fastify/multipart';
-import { generateFileHash } from './fileHash.js';
+import { calculateFutureDateTime, generateFileHash } from './fileHash.js';
 import axios from 'axios';
 import { S3Client,PutObjectCommand ,GetObjectCommand  } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
@@ -309,42 +309,46 @@ server.post('/delete-account', async (request, reply) => {
 // FILE OPERATIONS
 // '''
 
+// 
+
 server.post('/file/:userId', async function (req, reply) {
     try {
-    
-        // Get all the multipart information passed in the form 
-        const parts = req.files(); // Async generator
-        
-        // Get the user id passed in the path parameters
-        const {userId} = req.params as {
-            userId: string
-        }
-    
-        // Creates a list for multipart files
+        // Get all the multipart parts (files + fields)
+        const parts = req.parts(); 
+
+        let email: string | undefined;
+        let duration: string | undefined;
         const files: MultipartFile[] = [];
 
-        // Tracks the ma;icious status for all files
-        const results: { filename: string; url?: string, malicious:boolean }[] = [];
-        
+        // Get user ID from params
+        const { userId } = req.params as { userId: string };
+        console.log("User ID:", userId);
 
-        // Scan through all the info from the form data and pick seperate all the files
-        for await (const file of parts) {
-        
-            if(file.type === "file"){
-                files.push(file);
+        // Process each part once
+        for await (const part of parts) {
+            if (part.type === 'field') {
+                if (part.fieldname === "email") {
+                    email = part.value as string;
+                }
+                if (part.fieldname === "duration") {
+                    duration = (await calculateFutureDateTime(parseInt(part.value as string))).toLocaleString();
+                }
             }
-        
-        
+
+            if (part.type === "file") {
+                files.push(part);
+            }
         }
 
-        // Loop through all the files
+        // console.log("Email:", email);
+        // console.log("Duration:", duration);
+
+        // Prepare results list
+        const results: { filename: string; url?: string; malicious: boolean }[] = [];
+
+        // Process each file
         for (const file of files) {
-
-            // Generate the hash of each file
             const sha256 = await generateFileHash(file, 'sha256');
-            
-
-            // Call VirusTotal API to check the malicious status
 
             const options = {
                 method: 'GET',
@@ -355,111 +359,74 @@ server.post('/file/:userId', async function (req, reply) {
                 },
             };
 
-            const res = await axios
-                .request(options)
-                .then((res) => {return res.data})
-                .catch((err) => {return err.response});
-            
-            
-            const chunks = [];
+            const res = await axios.request(options).catch(err => err.response);
+            const chunks: Buffer[] = [];
             for await (const chunk of file.file) chunks.push(chunk);
 
-            //get the file array buffer
             const buffer = Buffer.concat(chunks);
-
-            // Create a file key with the date and filenam
             const fileKey = `${Date.now()}-${file.filename}`;
 
-            // If the virus total status is 404 which mean the file hash is not in the malware database
-            if(res.status && res.status === 404){
+            let isMalicious = false;
+            if (res?.status !== 404 && res?.data?.attributes?.last_analysis_stats?.malicious > 0) {
+                isMalicious = true;
+            }
 
-                // Store file in the S3 bucket
+            if (!isMalicious) {
+                // Upload to S3
                 const command = new PutObjectCommand({
-                Bucket: "securefile-transfer3c92a-dev",
-                Key: fileKey,
-                Body: buffer,
-                ContentLength: buffer.length,
-                });
-                
-                // Get the recent file stored
-                const command1 = new GetObjectCommand({ Bucket: "securefile-transfer3c92a-dev", Key: fileKey });
-                
-                // Generate the download url
-                const downloadUrl = await getSignedUrl(s3Client, command1, { expiresIn: 604800 });
-
-                // Track the file status
-                results.push({filename:file.filename, url:downloadUrl, malicious:false})
-                    
-            }else {
-
-                // If file exisit in virustotal database check malicious status
-                const stats = await res.data.attributes.last_analysis_stats;
-
-                // If malicious status is greater than 0 then dont store to s3
-                if(stats.malicious > 0){
-                    // Track file status
-                    results.push({filename:file.filename, malicious:true})
-                }else{
-                     // Store file in the S3 bucket
-                    const command = new PutObjectCommand({
                     Bucket: "securefile-transfer3c92a-dev",
                     Key: fileKey,
                     Body: buffer,
                     ContentLength: buffer.length,
-                    });
-                    // const res =  await s3Client.send(command);
-                    
-                    // Get the recent file stored
-                    const command1 = new GetObjectCommand({ Bucket: "securefile-transfer3c92a-dev", Key: fileKey });
-                    
-                    // Generate the download url
-                    const downloadUrl = await getSignedUrl(s3Client, command1, { expiresIn: 604800 });
-
-                    // Track the file status
-                    results.push({filename:file.filename, url:downloadUrl, malicious:false})
-                
-                }}
-            }
-
-            // Filter all files that are not malicious
-            const clean_Obj = results.filter(element => element.malicious === false);
-            
-            
-            // If there are none malicious file
-            if (clean_Obj.length>0){
-
-                //Upload the user file to Dynamo Db
-                const testcommand = new PutCommand({
-                    TableName: "Files",
-                    Item: {
-                        id:uuidv4(),
-                        user_id: userId,
-                        files: clean_Obj,
-                        created_at: new Date().toLocaleString()
-                    },
                 });
-        
-                // Executes the command
-                const res = await docClient.send(testcommand)
+                await s3Client.send(command);
 
-                // Track the status of upload
-                if (res.$metadata.httpStatusCode === 200){
-                    
-                    reply.code(200).send({success: true ,data:results})
-                }else {
-                    reply.code(500).send({success: false })
-                }
-            
-            }else{
-                // If there are not safe file
-                reply.code(200).send({success: true ,data:results})
+                // Get download URL
+                const command1 = new GetObjectCommand({
+                    Bucket: "securefile-transfer3c92a-dev",
+                    Key: fileKey
+                });
+                const downloadUrl = await getSignedUrl(s3Client, command1, { expiresIn: 604800 });
+
+                results.push({ filename: file.filename, url: downloadUrl, malicious: false });
+            } else {
+                results.push({ filename: file.filename, malicious: true });
             }
-        
-    }catch(error){
-          reply.code(500).send({ error: (error as Error).message, success: false });
-    }
+        }
 
+        // Filter non-malicious files
+        const cleanFiles = results.filter(f => !f.malicious);
+
+        if (cleanFiles.length > 0) {
+            // Save metadata to DynamoDB
+            const dbCommand = new PutCommand({
+                TableName: "Files",
+                Item: {
+                    id: uuidv4(),
+                    user_id: userId,
+                    files: cleanFiles,
+                    created_at: new Date().toLocaleString(),
+                    duration: duration,
+                    email: email
+                },
+            });
+
+            const dbRes = await docClient.send(dbCommand);
+
+            if (dbRes.$metadata.httpStatusCode === 200) {
+                return reply.code(200).send({ success: true, data: results });
+            } else {
+                return reply.code(500).send({ success: false });
+            }
+        }
+
+        return reply.code(200).send({ success: true, data: results });
+
+    } catch (error) {
+        reply.code(500).send({ error: (error as Error).message, success: false });
+    }
 });
+
 
 server.get('/user/file/:userId', async function (req, reply){
     try {

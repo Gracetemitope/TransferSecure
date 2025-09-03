@@ -8,7 +8,7 @@ import crypto from 'crypto';
 import cors from '@fastify/cors';
 import 'dotenv/config';
 import multipart, {} from '@fastify/multipart';
-import { generateFileHash } from './fileHash.js';
+import { calculateFutureDateTime, generateFileHash } from './fileHash.js';
 import axios from 'axios';
 import { S3Client, PutObjectCommand, GetObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
@@ -248,25 +248,41 @@ server.post('/delete-account', async (request, reply) => {
         reply.code(500).send({ error: err.message, success: false });
     }
 });
-// Virus total
+// '''
+// FILE OPERATIONS
+// '''
+// 
 server.post('/file/:userId', async function (req, reply) {
     try {
-        const parts = req.files(); // Async generator
-        const { userId } = req.params;
-        console.log(userId);
+        // Get all the multipart parts (files + fields)
+        const parts = req.parts();
+        let email;
+        let duration;
         const files = [];
-        const results = [];
-        for await (const file of parts) {
-            console.log(file);
-            if (file.type === "file") {
-                files.push(file);
+        // Get user ID from params
+        const { userId } = req.params;
+        console.log("User ID:", userId);
+        // Process each part once
+        for await (const part of parts) {
+            if (part.type === 'field') {
+                if (part.fieldname === "email") {
+                    email = part.value;
+                }
+                if (part.fieldname === "duration") {
+                    duration = (await calculateFutureDateTime(parseInt(part.value))).toLocaleString();
+                }
             }
-            // files.push(file);
+            if (part.type === "file") {
+                files.push(part);
+            }
         }
-        console.log(files);
+        console.log("Email:", email);
+        console.log("Duration:", duration);
+        // Prepare results list
+        const results = [];
+        // Process each file
         for (const file of files) {
             const sha256 = await generateFileHash(file, 'sha256');
-            // Call VirusTotal API
             const options = {
                 method: 'GET',
                 url: `https://www.virustotal.com/api/v3/files/${sha256}`,
@@ -275,69 +291,61 @@ server.post('/file/:userId', async function (req, reply) {
                     'x-apikey': process.env.VIRUS_TOTAL,
                 },
             };
-            const res = await axios
-                .request(options)
-                .then((res) => { return res.data; })
-                .catch((err) => { return err.response; });
+            const res = await axios.request(options).catch(err => err.response);
             const chunks = [];
             for await (const chunk of file.file)
                 chunks.push(chunk);
             const buffer = Buffer.concat(chunks);
-            // Upload to S3 with ContentLength
             const fileKey = `${Date.now()}-${file.filename}`;
-            if (res.status && res.status === 404) {
+            let isMalicious = false;
+            if (res?.status !== 404 && res?.data?.attributes?.last_analysis_stats?.malicious > 0) {
+                isMalicious = true;
+            }
+            if (!isMalicious) {
+                // Upload to S3
                 const command = new PutObjectCommand({
                     Bucket: "securefile-transfer3c92a-dev",
                     Key: fileKey,
                     Body: buffer,
                     ContentLength: buffer.length,
                 });
-                const command1 = new GetObjectCommand({ Bucket: "securefile-transfer3c92a-dev", Key: fileKey });
-                const downloadUrl = await getSignedUrl(s3Client, command1, { expiresIn: 3600 });
+                await s3Client.send(command);
+                // Get download URL
+                const command1 = new GetObjectCommand({
+                    Bucket: "securefile-transfer3c92a-dev",
+                    Key: fileKey
+                });
+                const downloadUrl = await getSignedUrl(s3Client, command1, { expiresIn: 604800 });
                 results.push({ filename: file.filename, url: downloadUrl, malicious: false });
             }
             else {
-                const stats = await res.data.attributes.last_analysis_stats;
-                if (stats.malicious > 0) {
-                    // Dont push file to be uploaded
-                    results.push({ filename: file.filename, malicious: true });
-                }
-                else {
-                    const command = new PutObjectCommand({
-                        Bucket: "securefile-transfer3c92a-dev",
-                        Key: fileKey,
-                        Body: buffer,
-                        ContentLength: buffer.length,
-                    });
-                    const res = await s3Client.send(command);
-                    const command1 = new GetObjectCommand({ Bucket: "securefile-transfer3c92a-dev", Key: fileKey });
-                    const downloadUrl = await getSignedUrl(s3Client, command1, { expiresIn: 3600 });
-                    results.push({ filename: file.filename, url: downloadUrl, malicious: false });
-                }
+                results.push({ filename: file.filename, malicious: true });
             }
         }
-        const clean_Obj = results.filter(element => element.malicious === false);
-        if (clean_Obj.length > 0) {
-            const testcommand = new PutCommand({
+        // Filter non-malicious files
+        const cleanFiles = results.filter(f => !f.malicious);
+        if (cleanFiles.length > 0) {
+            // Save metadata to DynamoDB
+            const dbCommand = new PutCommand({
                 TableName: "Files",
                 Item: {
                     id: uuidv4(),
                     user_id: userId,
-                    files: clean_Obj,
-                    created_at: new Date().toLocaleString()
+                    files: cleanFiles,
+                    created_at: new Date().toLocaleString(),
+                    duration: duration,
+                    email: email
                 },
             });
-            const res = await docClient.send(testcommand);
-            if (res.$metadata.httpStatusCode === 200) {
-                reply.code(200).send({ success: true, data: results });
+            const dbRes = await docClient.send(dbCommand);
+            if (dbRes.$metadata.httpStatusCode === 200) {
+                return reply.code(200).send({ success: true, data: results });
             }
             else {
-                reply.code(500).send({ success: false });
+                return reply.code(500).send({ success: false });
             }
         }
-        else {
-            reply.code(200).send({ success: true, data: results });
-        }
+        return reply.code(200).send({ success: true, data: results });
     }
     catch (error) {
         reply.code(500).send({ error: error.message, success: false });
@@ -345,7 +353,9 @@ server.post('/file/:userId', async function (req, reply) {
 });
 server.get('/user/file/:userId', async function (req, reply) {
     try {
+        // Get user Id as a request parameter
         const { userId } = req.params;
+        // Get all files with the user iD attached to them
         const command = new QueryCommand({
             TableName: "Files",
             IndexName: "user_id-index",
@@ -354,8 +364,10 @@ server.get('/user/file/:userId', async function (req, reply) {
                 ":u": { S: userId },
             },
         });
+        // Execute command
         const response = await docClient.send(command);
         const userFiles = response.Items.map(item => unmarshall(item));
+        // Reply with user file information
         reply.code(200).send({ data: userFiles, success: true });
     }
     catch (error) {
