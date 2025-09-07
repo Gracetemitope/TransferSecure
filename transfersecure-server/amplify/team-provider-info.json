@@ -1,0 +1,42 @@
+{
+  "dev": {
+    "awscloudformation": {
+      "AuthRoleName": "amplify-transfersecureserver-dev-3c92a-authRole",
+      "UnauthRoleArn": "arn:aws:iam::804363746820:role/amplify-transfersecureserver-dev-3c92a-unauthRole",
+      "AuthRoleArn": "arn:aws:iam::804363746820:role/amplify-transfersecureserver-dev-3c92a-authRole",
+      "Region": "us-east-1",
+      "DeploymentBucketName": "amplify-transfersecureserver-dev-3c92a-deployment",
+      "UnauthRoleName": "amplify-transfersecureserver-dev-3c92a-unauthRole",
+      "StackName": "amplify-transfersecureserver-dev-3c92a",
+      "StackId": "arn:aws:cloudformation:us-east-1:804363746820:stack/amplify-transfersecureserver-dev-3c92a/eb5d0a80-83e8-11f0-bd0e-0eea9c6c1601",
+      "AmplifyAppId": "d3j4imllw2kh9y"
+    },
+    "categories": {
+      "function": {
+        "transfersecureserver7b6561d2": {
+          "deploymentBucketName": "amplify-transfersecureserver-dev-3c92a-deployment",
+          "s3Key": "amplify-builds/transfersecureserver7b6561d2-52332f50554d37384472-build.zip"
+        }
+      },
+      "api": {
+        "apia5e27c1b": {}
+      },
+      "hosting": {
+        "S3AndCloudFront": {}
+      },
+      "auth": {
+        "transfersecureserver7f26d6ca": {}
+      },
+      "storage": {
+        "s38fef0260": {},
+        "Files": {
+          "tableName": "Files",
+          "region": "us-east-1",
+          "arn": "arn:aws:dynamodb:us-east-1:804363746820:table/Files",
+          "partitionKeyName": "id",
+          "partitionKeyType": "S"
+        }
+      }
+    }
+  }
+}

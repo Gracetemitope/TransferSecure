@@ -1,0 +1,140 @@
+{
+  "api": {
+    "apia5e27c1b": {
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn"
+          ],
+          "category": "function",
+          "resourceName": "transfersecureserver7b6561d2"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "API Gateway"
+    }
+  },
+  "auth": {
+    "transfersecureserver7f26d6ca": {
+      "customAuth": false,
+      "dependsOn": [],
+      "frontendAuthConfig": {
+        "mfaConfiguration": "OFF",
+        "mfaTypes": [
+          "SMS"
+        ],
+        "passwordProtectionSettings": {
+          "passwordPolicyCharacters": [],
+          "passwordPolicyMinLength": 8
+        },
+        "signupAttributes": [
+          "EMAIL"
+        ],
+        "socialProviders": [],
+        "usernameAttributes": [
+          "EMAIL"
+        ],
+        "verificationMechanisms": [
+          "EMAIL"
+        ]
+      },
+      "providerPlugin": "awscloudformation",
+      "service": "Cognito"
+    }
+  },
+  "function": {
+    "transfersecureserver7b6561d2": {
+      "build": true,
+      "providerPlugin": "awscloudformation",
+      "service": "Lambda"
+    }
+  },
+  "hosting": {
+    "S3AndCloudFront": {
+      "providerPlugin": "awscloudformation",
+      "service": "S3AndCloudFront"
+    }
+  },
+  "parameters": {
+    "AMPLIFY_function_transfersecureserver7b6561d2_deploymentBucketName": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "transfersecureserver7b6561d2"
+        }
+      ]
+    },
+    "AMPLIFY_function_transfersecureserver7b6561d2_s3Key": {
+      "usedBy": [
+        {
+          "category": "function",
+          "resourceName": "transfersecureserver7b6561d2"
+        }
+      ]
+    },
+    "AMPLIFY_storage_Files_arn": {
+      "usedBy": [
+        {
+          "category": "storage",
+          "resourceName": "Files"
+        }
+      ]
+    },
+    "AMPLIFY_storage_Files_partitionKeyName": {
+      "usedBy": [
+        {
+          "category": "storage",
+          "resourceName": "Files"
+        }
+      ]
+    },
+    "AMPLIFY_storage_Files_partitionKeyType": {
+      "usedBy": [
+        {
+          "category": "storage",
+          "resourceName": "Files"
+        }
+      ]
+    },
+    "AMPLIFY_storage_Files_region": {
+      "usedBy": [
+        {
+          "category": "storage",
+          "resourceName": "Files"
+        }
+      ]
+    },
+    "AMPLIFY_storage_Files_tableName": {
+      "usedBy": [
+        {
+          "category": "storage",
+          "resourceName": "Files"
+        }
+      ]
+    }
+  },
+  "storage": {
+    "Files": {
+      "dependsOn": [],
+      "providerPlugin": "awscloudformation",
+      "service": "DynamoDB",
+      "serviceType": "imported"
+    },
+    "s38fef0260": {
+      "dependsOn": [
+        {
+          "attributes": [
+            "Name",
+            "Arn",
+            "LambdaExecutionRole"
+          ],
+          "category": "function",
+          "resourceName": "transfersecureserver7b6561d2"
+        }
+      ],
+      "providerPlugin": "awscloudformation",
+      "service": "S3"
+    }
+  }
+}

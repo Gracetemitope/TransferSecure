@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "paths": {
+    "/files": {
+      "name": "/files",
+      "lambdaFunction": "transfersecureserver7b6561d2",
+      "permissions": {
+        "setting": "open"
+      }
+    }
+  }
+}

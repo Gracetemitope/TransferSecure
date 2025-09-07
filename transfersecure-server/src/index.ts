@@ -1,4 +1,4 @@
-import fastify from 'fastify';
+import fastify, { type FastifyRequest } from 'fastify';
 import {
     autoSignIn,
     cognitoUserPoolsTokenProvider,
@@ -12,11 +12,33 @@ import {
     signOut,
 } from 'aws-amplify/auth/cognito';
 import { CookieStorage, defaultStorage } from 'aws-amplify/utils';
-import { Amplify } from 'aws-amplify';
+import { uploadData } from 'aws-amplify/storage';
+import { Amplify} from 'aws-amplify';
 import { fetchAuthSession, signIn, signUp } from 'aws-amplify/auth';
 import crypto from 'crypto';
 import cors from '@fastify/cors';
 import 'dotenv/config';
+import multipart, { type MultipartFile } from '@fastify/multipart';
+import { calculateFutureDateTime, generateFileHash } from './fileHash.js';
+import axios from 'axios';
+import { S3Client,PutObjectCommand ,GetObjectCommand  } from "@aws-sdk/client-s3";
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
+import { DynamoDBClient, QueryCommand  } from "@aws-sdk/client-dynamodb"
+import { PutCommand, DynamoDBDocumentClient, GetCommand } from "@aws-sdk/lib-dynamodb";
+import { unmarshall } from "@aws-sdk/util-dynamodb";
+import { v4 as uuidv4 } from 'uuid';
+
+const s3Client = new S3Client({
+  region: "us-east-1", // your S3 region
+  credentials: {
+    accessKeyId: process.env.AWS_ACCESS_KEY_ID!,
+    secretAccessKey: process.env.AWS_SECRET_ACCESS_KEY!,
+  },
+});
+
+const dbclient = new DynamoDBClient({region: "us-east-1"});
+
+const docClient = DynamoDBDocumentClient.from(dbclient)
 
 const server = fastify();
 
@@ -27,10 +49,13 @@ await server.register(cors as any, {
     credentials: true,
 });
 
+await server.register(multipart);
+
 cognitoUserPoolsTokenProvider.setKeyValueStorage(new CookieStorage());
 cognitoUserPoolsTokenProvider.setKeyValueStorage(defaultStorage);
 
-Amplify.configure({
+
+Amplify.configure( {
     Auth: {
         Cognito: {
             userPoolClientId: process.env.CLIENT_ID as string,
@@ -38,7 +63,17 @@ Amplify.configure({
             signUpVerificationMethod: 'code',
         },
     },
+    Storage:{
+        S3:{
+            bucket:"securefile-transfer3c92a-dev",
+            region:"us-east-1"
+        }
+    },
+    
+
 });
+
+
 
 function generateUserName(email: string): string {
     const raw = email.toLowerCase();
@@ -272,6 +307,161 @@ server.post('/delete-account', async (request, reply) => {
     }
 });
 
+// '''
+// FILE OPERATIONS
+// '''
+
+// 
+
+server.post('/file/:userId', async function (req, reply) {
+    try {
+        // Get all the multipart parts (files + fields)
+        const parts = req.parts(); 
+
+        let email: string | undefined;
+        let duration: string | undefined;
+        const files: MultipartFile[] = [];
+
+        // Get user ID from params
+        const { userId } = req.params as { userId: string };
+        console.log("User ID:", userId);
+
+        // Process each part once
+        for await (const part of parts) {
+            if (part.type === 'field') {
+                if (part.fieldname === "email") {
+                    email = part.value as string;
+                }
+                if (part.fieldname === "duration") {
+                    duration = (await calculateFutureDateTime(parseInt(part.value as string))).toLocaleString();
+                }
+            }
+
+            if (part.type === "file") {
+                files.push(part);
+            }
+        }
+
+        // console.log("Email:", email);
+        // console.log("Duration:", duration);
+
+        // Prepare results list
+        const results: { filename: string; url?: string; malicious: boolean }[] = [];
+
+        // Process each file
+        for (const file of files) {
+            const sha256 = await generateFileHash(file, 'sha256');
+
+            const options = {
+                method: 'GET',
+                url: `https://www.virustotal.com/api/v3/files/${sha256}`,
+                headers: {
+                    accept: 'application/json',
+                    'x-apikey': process.env.VIRUS_TOTAL as string,
+                },
+            };
+
+            const res = await axios.request(options).catch(err => err.response);
+            const chunks: Buffer[] = [];
+            for await (const chunk of file.file) chunks.push(chunk);
+
+            const buffer = Buffer.concat(chunks);
+            const fileKey = `${Date.now()}-${file.filename}`;
+
+            let isMalicious = false;
+            if (res?.status !== 404 && res?.data?.attributes?.last_analysis_stats?.malicious > 0) {
+                isMalicious = true;
+            }
+
+            if (!isMalicious) {
+                // Upload to S3
+                const command = new PutObjectCommand({
+                    Bucket: "securefile-transfer3c92a-dev",
+                    Key: fileKey,
+                    Body: buffer,
+                    ContentLength: buffer.length,
+                });
+                await s3Client.send(command);
+
+                // Get download URL
+                const command1 = new GetObjectCommand({
+                    Bucket: "securefile-transfer3c92a-dev",
+                    Key: fileKey
+                });
+                const downloadUrl = await getSignedUrl(s3Client, command1, { expiresIn: 604800 });
+
+                results.push({ filename: file.filename, url: downloadUrl, malicious: false });
+            } else {
+                results.push({ filename: file.filename, malicious: true });
+            }
+        }
+
+        // Filter non-malicious files
+        const cleanFiles = results.filter(f => !f.malicious);
+
+        if (cleanFiles.length > 0) {
+            // Save metadata to DynamoDB
+            const dbCommand = new PutCommand({
+                TableName: "Files",
+                Item: {
+                    id: uuidv4(),
+                    user_id: userId,
+                    files: cleanFiles,
+                    created_at: new Date().toLocaleString(),
+                    duration: duration,
+                    email: email
+                },
+            });
+
+            const dbRes = await docClient.send(dbCommand);
+
+            if (dbRes.$metadata.httpStatusCode === 200) {
+                return reply.code(200).send({ success: true, data: results });
+            } else {
+                return reply.code(500).send({ success: false });
+            }
+        }
+
+        return reply.code(200).send({ success: true, data: results });
+
+    } catch (error) {
+        reply.code(500).send({ error: (error as Error).message, success: false });
+    }
+});
+
+
+server.get('/user/file/:userId', async function (req, reply){
+    try {
+        // Get user Id as a request parameter
+        const {userId} = req.params as {
+            userId: string
+        }
+
+        // Get all files with the user iD attached to them
+        const command = new QueryCommand ({
+            TableName: "Files",
+            IndexName: "user_id-index",
+            KeyConditionExpression: "user_id = :u",
+            ExpressionAttributeValues: {
+        ":u": { S: userId },
+        },
+        });
+
+
+        // Execute command
+        const response = await docClient.send(command)
+
+        const userFiles = response.Items!.map(item => unmarshall(item))
+
+        // Reply with user file information
+        reply.code(200).send({data:userFiles,success: true })
+        
+    } catch (error) {
+        reply.code(500).send({ error: (error as Error).message, success: false });
+    }
+    
+})
+
 server.post('/forgot-password', async (request, reply) => {
     const { email, confirmationCode, newPassword } = request.body as {
         email: string;
@@ -318,7 +508,7 @@ server.listen({ port: 8080 }, (err, address) => {
         console.error(err);
         process.exit(1);
     }
-
+    // createTable
     console.log(`Server listening at ${address}`);
     console.log(process.env.SERVER);
 });
