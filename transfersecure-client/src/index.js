@@ -4,15 +4,27 @@ import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
 import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
-
+import Register from "./pages/authPages/Register";
+import Login from "./pages/authPages/Login";
+import Test from "./components/Test"
+import ConfirmEmail from "./pages/authPages/ConfirmEmail";
+import ForgotPassword from "./pages/authPages/ForgotPassword";
+import ResetPassword from "./pages/authPages/ResetPassword";
+import TransferFile from "./pages/TransferFile";
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
     <BrowserRouter>
         <Routes>
-            <Route path="/" component={App} />
+            <Route path="/" element={< App />} />
+            <Route path="/register" element={< Register />} />
+            <Route path="/login" element={< Login />} />
+            <Route path="/test" element={<Test />} />
+            <Route path="confirm" element={<ConfirmEmail />} />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
+            <Route path="/transfer" element={<TransferFile />} />
         </Routes>
-    <App />
   </BrowserRouter>
 );
 
