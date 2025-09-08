@@ -2,6 +2,7 @@ import Sidebar from "../components/Layout/SideBar";
 import Navbar from "../components/Layout/NavBar";
 import BreadCrumb from "../components/BreadCrumb";
 import fileIcon from "../assets/File.png"
+import UploadSuccess from "../components/UploadSuccess";
 
 function TransferFile() {
     return (
@@ -16,9 +17,11 @@ function TransferFile() {
                         { label: "Upload file"}
                     ]}
                 />
+                <UploadSuccess />
                 <div className={"bg-white rounded-lg shadow p-6"}>
                     <div className={"grid gird-cols-1 md:grid-cols-2 gap-6"}>
                         <div className={"space-y-4"}>
+                            {/* Todo: Remove File Name*/}
                             <input
                                 type="text"
                                 placeholder="File name"
