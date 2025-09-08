@@ -43,7 +43,7 @@ const docClient = DynamoDBDocumentClient.from(dbclient)
 const server = fastify();
 
 await server.register(cors as any, {
-    origin: ['http://localhost:3001'],
+    origin: ['http://localhost:3000'],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
