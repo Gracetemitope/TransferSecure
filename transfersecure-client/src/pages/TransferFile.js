@@ -3,8 +3,51 @@ import Navbar from "../components/Layout/NavBar";
 import BreadCrumb from "../components/BreadCrumb";
 import fileIcon from "../assets/File.png"
 import UploadSuccess from "../components/UploadSuccess";
+import {useState} from "react";
 
 function TransferFile() {
+    const [formState, setFormState] = useState({
+        file: "",
+        email: "",
+        duration: "",
+        filename: "",
+    })
+    const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8080";
+    const [loading, setLoading] = useState(false);
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        setLoading(true);
+        try {
+            const response = await fetch(API_URL + "/file", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    file: formState.file,
+                    email: formState.email,
+                    duration: formState.duration,
+                    filename: formState.filename,
+                })
+            })
+
+            const data = await response.json();
+            console.log(data);
+            if(response.ok) {
+                alert("Successfully uploaded");
+            }
+
+        } catch (error) {
+            console.log(error);
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    const handleChange = (e) => {
+        setFormState({...formState, [e.target.name]: e.target.value});
+    }
     return (
         <div className="flex h-screen">
                 <Sidebar />
@@ -21,16 +64,21 @@ function TransferFile() {
                 <div className={"bg-white rounded-lg shadow p-6"}>
                     <div className={"grid gird-cols-1 md:grid-cols-2 gap-6"}>
                         <div className={"space-y-4"}>
-                            {/* Todo: Remove File Name*/}
                             <input
                                 type="text"
                                 placeholder="File name"
                                 className={"w-full rounded-full border border-gray-200 px-4 py-3 focus:outline-none focus:shadow-outline"}
+                               value={formState.filename}
+                                onChange={handleChange}
+                                required
                                 />
                             <input
                                 type="email"
                                 placeholder="Recipient's email address"
                                 className="w-full rounded-full border border-gray-200 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                                value={formState.email}
+                                onChange={handleChange}
+                                required
                             />
                             <select
                                 className="w-full rounded-full border border-gray-200 px-4 py-3 text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500">
