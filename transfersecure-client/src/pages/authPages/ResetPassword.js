@@ -7,12 +7,14 @@ function ResetPassword() {
     const [confirmationCode, setConfirmationCode] = useState("");
     const [newPassword, setNewPassword] = useState("");
     const navigate = useNavigate();
+    const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8080";
+
 
     const email = localStorage.getItem("resetEmail"); // fixed key
 
     const handleResetPassword = async () => {
         try {
-            const response = await fetch("http://localhost:8080/forgot-password", {
+            const response = await fetch(API_URL + "/forgot-password", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({

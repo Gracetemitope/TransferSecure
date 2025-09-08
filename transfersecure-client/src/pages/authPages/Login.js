@@ -11,6 +11,8 @@ function Login() {
     })
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
+    const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8080";
+
 
     const handleChange = (e) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -19,7 +21,7 @@ function Login() {
         e.preventDefault();
         setLoading(true);
         try {
-            const response = await fetch("http://[::1]:8080/login", {
+            const response = await fetch(API_URL + "/login", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

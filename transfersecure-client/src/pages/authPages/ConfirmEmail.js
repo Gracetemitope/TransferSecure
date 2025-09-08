@@ -5,6 +5,7 @@ function ConfirmEmail({ username, email, onClose }) {
     const [confirmationCode, setConfirmationCode] = useState(new Array(6).fill(""));
     const navigate = useNavigate();
     const inputsRef = useRef([]);
+    const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8080";
 
     useEffect(() => {
         inputsRef.current[0]?.focus();
@@ -50,7 +51,7 @@ function ConfirmEmail({ username, email, onClose }) {
         e.preventDefault();
         const code = confirmationCode.join("");
         try {
-            const response = await fetch("http://localhost:8080/confirm", {
+            const response = await fetch(API_URL + "/confirm", {
                 method: "POST",
                 headers: {"Content-Type": "application/json"},
                 body: JSON.stringify({

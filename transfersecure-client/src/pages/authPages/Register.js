@@ -17,6 +17,8 @@ function Register() {
     const [showPassword, setShowPassword] = useState(true);
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
+    const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8080";
+
 
     const handleChange = (e) => {
         setFormState({ ...formState, [e.target.name]: e.target.value })
@@ -25,7 +27,7 @@ function Register() {
         e.preventDefault()
         setLoading(true);
         try {
-            const response = await fetch("http://localhost:8080/register", {
+            const response = await fetch(API_URL + "/register", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
