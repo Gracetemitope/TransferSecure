@@ -258,6 +258,7 @@ server.post('/file/:userId', async function (req, reply) {
         const parts = req.parts();
         let email;
         let duration;
+        let fileName;
         const files = [];
         // Get user ID from params
         const { userId } = req.params;
@@ -270,6 +271,9 @@ server.post('/file/:userId', async function (req, reply) {
                 }
                 if (part.fieldname === "duration") {
                     duration = (await calculateFutureDateTime(parseInt(part.value))).toLocaleString();
+                }
+                if (part.fieldname === "filename") {
+                    fileName = part.value;
                 }
             }
             if (part.type === "file") {
@@ -331,6 +335,7 @@ server.post('/file/:userId', async function (req, reply) {
                 Item: {
                     id: uuidv4(),
                     user_id: userId,
+                    file_name: fileName,
                     files: cleanFiles,
                     created_at: new Date().toLocaleString(),
                     duration: duration,
@@ -351,6 +356,8 @@ server.post('/file/:userId', async function (req, reply) {
         reply.code(500).send({ error: error.message, success: false });
     }
 });
+
+
 server.get('/user/file/:userId', async function (req, reply) {
     try {
         // Get user Id as a request parameter
@@ -374,6 +381,8 @@ server.get('/user/file/:userId', async function (req, reply) {
         reply.code(500).send({ error: error.message, success: false });
     }
 });
+
+
 server.post('/forgot-password', async (request, reply) => {
     const { email, confirmationCode, newPassword } = request.body;
     try {

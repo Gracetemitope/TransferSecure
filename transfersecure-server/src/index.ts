@@ -320,6 +320,7 @@ server.post('/file/:userId', async function (req, reply) {
 
         let email: string | undefined;
         let duration: string | undefined;
+        let fileName: string | undefined;
         const files: MultipartFile[] = [];
 
         // Get user ID from params
@@ -335,6 +336,10 @@ server.post('/file/:userId', async function (req, reply) {
                 if (part.fieldname === "duration") {
                     duration = (await calculateFutureDateTime(parseInt(part.value as string))).toLocaleString();
                 }
+                if (part.fieldname === "filename") {
+                    fileName =part.value as string;
+                }
+
             }
 
             if (part.type === "file") {
@@ -406,6 +411,7 @@ server.post('/file/:userId', async function (req, reply) {
                 Item: {
                     id: uuidv4(),
                     user_id: userId,
+                    file_name:fileName,
                     files: cleanFiles,
                     created_at: new Date().toLocaleString(),
                     duration: duration,
