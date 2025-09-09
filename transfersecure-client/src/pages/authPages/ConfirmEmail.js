@@ -5,7 +5,8 @@ function ConfirmEmail({ username, email, onClose }) {
     const [confirmationCode, setConfirmationCode] = useState(new Array(6).fill(""));
     const navigate = useNavigate();
     const inputsRef = useRef([]);
-    const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8080";
+    const API_URL = process.env.REACT_APP_API_URL;
+        // || "http://localhost:8080";
 
     useEffect(() => {
         inputsRef.current[0]?.focus();

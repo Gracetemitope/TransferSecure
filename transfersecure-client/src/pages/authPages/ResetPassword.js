@@ -7,7 +7,8 @@ function ResetPassword() {
     const [confirmationCode, setConfirmationCode] = useState("");
     const [newPassword, setNewPassword] = useState("");
     const navigate = useNavigate();
-    const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8080";
+    const API_URL = process.env.REACT_APP_API_URL;
+        // || "http://localhost:8080";
 
 
     const email = localStorage.getItem("resetEmail"); // fixed key

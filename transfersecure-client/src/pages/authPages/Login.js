@@ -11,7 +11,8 @@ function Login() {
     })
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
-    const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8080";
+    const API_URL = process.env.REACT_APP_API_URL;
+        // || "http://localhost:8080";
 
 
     const handleChange = (e) => {

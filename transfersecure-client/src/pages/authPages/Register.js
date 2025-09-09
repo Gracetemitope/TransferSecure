@@ -17,7 +17,8 @@ function Register() {
     const [showPassword, setShowPassword] = useState(true);
     const navigate = useNavigate();
     const [loading, setLoading] = useState(false);
-    const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8080";
+    const API_URL = process.env.REACT_APP_API_URL;
+        // || "http://localhost:8080";
 
 
     const handleChange = (e) => {
