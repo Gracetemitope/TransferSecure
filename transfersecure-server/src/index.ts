@@ -1,4 +1,6 @@
 import fastify, { type FastifyRequest } from 'fastify';
+import fs from 'fs';
+
 import {
     autoSignIn,
     cognitoUserPoolsTokenProvider,
@@ -36,11 +38,18 @@ const s3Client = new S3Client({
   },
 });
 
+
 const dbclient = new DynamoDBClient({region: "us-east-1"});
 
 const docClient = DynamoDBDocumentClient.from(dbclient)
 
-const server = fastify();
+// const server = fastify();
+const server = fastify({
+    https: {
+        key: fs.readFileSync('/etc/pki/tls/private/localhost.key'),
+        cert: fs.readFileSync('/etc/pki/tls/certs/localhost.crt')
+    }
+});
 
 await server.register(cors as any, {
     origin: ['http://localhost:3000'],
