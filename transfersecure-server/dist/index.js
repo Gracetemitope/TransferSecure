@@ -33,8 +33,20 @@ const server = fastify({
         cert: fs.readFileSync('/etc/pki/tls/certs/server.crt')
     }
 });
+//
+// await server.register(cors as any, {
+//     origin: true,
+//     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+//     allowedHeaders: ['Content-Type', 'Authorization'],
+//     credentials: true,
+// });
 await server.register(cors, {
-    origin: ['http://localhost:3000'],
+    origin: (origin, cb) => {
+        // allow requests with no origin (like curl or mobile apps)
+        if (!origin)
+            return cb(null, true);
+        return cb(null, true); // reflect any origin
+    },
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
