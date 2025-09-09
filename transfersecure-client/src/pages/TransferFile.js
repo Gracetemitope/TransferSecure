@@ -19,19 +19,15 @@ function TransferFile() {
         e.preventDefault();
         setLoading(true);
         try {
+            const formData = new FormData();
+            formData.append("file", formState.file);
+            formData.append("email", formState.email);
+            formData.append("duration", formState.duration);
+            formData.append("filename", formState.filename);
             const response = await fetch(API_URL + "/file", {
                 method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                },
-                body: JSON.stringify({
-                    file: formState.file,
-                    email: formState.email,
-                    duration: formState.duration,
-                    filename: formState.filename,
-                })
-            })
-
+                body: formData,
+            });
             const data = await response.json();
             console.log(data);
             if(response.ok) {
@@ -81,19 +77,29 @@ function TransferFile() {
                                 required
                             />
                             <select
-                                className="w-full rounded-full border border-gray-200 px-4 py-3 text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                                <option>Select file duration</option>
-                                <option>1 day</option>
-                                <option>7 days</option>
-                                <option>30 days</option>
+                                name="duration"
+                                value={formState.duration}
+                                onChange={handleChange}
+                                className="w-full rounded-full border border-gray-200 px-4 py-3 text-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            >
+                                <option value="">Select file duration</option>
+                                <option value="1d">1 day</option>
+                                <option value="7d">7 days</option>
+                                <option value="30d">30 days</option>
                             </select>
                         </div>
                         <div className={"flex flex-col items-center justify-center border-2 border-dashed bg-[#F6F5FF] border-[#211A94]" }>
-                                <img src={fileIcon} className={""}></img>
-                                <p className={"font-medium text-gray-700 text-center"}>Add File Here</p>
-                                <p className={"text-sm text-gray-500 text-center"}>
-                                    Or <span className={"text-[#211A94] cursor-pointer"}>Browse</span> files from computer to continue
-                                </p>
+                                {/*<img src={fileIcon} className={""}></img>*/}
+                                {/*<p className={"font-medium text-gray-700 text-center"}>Add File Here</p>*/}
+                                {/*<p className={"text-sm text-gray-500 text-center"}>*/}
+                                {/*    Or <span className={"text-[#211A94] cursor-pointer"}>Browse</span> files from computer to continue*/}
+                                {/*</p>*/}
+                            <input
+                                type="file"
+                                name="file"
+                                onChange={(e) => setFormState({ ...formState, file: e.target.files[0] })}
+                                required
+                            />
                         </div>
                     </div>
                     <div>
@@ -101,9 +107,13 @@ function TransferFile() {
                     </div>
                 </div>
                 <div className="mt-6 flex justify-end">
-                <button className="bg-[#211A94] text-white px-11 py-3 rounded-full hover:bg-indigo-800 transition ml-80">
-                    Transfer File
-                </button>
+                    <button
+                        onClick={handleSubmit}
+                        disabled={loading}
+                        className="bg-[#211A94] text-white px-11 py-3 rounded-full hover:bg-indigo-800 transition ml-80"
+                    >
+                        {loading ? "Uploading..." : "Transfer File"}
+                    </button>
                 </div>
             </main>
                 </div>
