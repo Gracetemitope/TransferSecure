@@ -46,8 +46,8 @@ const docClient = DynamoDBDocumentClient.from(dbclient)
 // const server = fastify();
 const server = fastify({
     https: {
-        key: fs.readFileSync('/etc/pki/tls/private/localhost.key'),
-        cert: fs.readFileSync('/etc/pki/tls/certs/localhost.crt')
+        key: fs.readFileSync('/etc/pki/tls/private/server.key'),
+        cert: fs.readFileSync('/etc/pki/tls/certs/server.crt')
     }
 });
 
