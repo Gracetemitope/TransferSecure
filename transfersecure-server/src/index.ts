@@ -52,7 +52,7 @@ const server = fastify({
 });
 
 await server.register(cors as any, {
-    origin: ['http://localhost:3000'],
+    origin: true,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
