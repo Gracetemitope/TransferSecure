@@ -17,6 +17,7 @@ import { PutCommand, DynamoDBDocumentClient, GetCommand } from "@aws-sdk/lib-dyn
 import { unmarshall } from "@aws-sdk/util-dynamodb";
 import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs';
+import rateLimit from '@fastify/rate-limit';
 // ssl certificate
 const options = {
     https: {
@@ -39,6 +40,11 @@ await server.register(cors, {
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
+});
+await server.register(rateLimit, {
+    global: true,
+    max: 100,
+    timeWindow: '1 minute'
 });
 await server.register(multipart);
 cognitoUserPoolsTokenProvider.setKeyValueStorage(new CookieStorage());
