@@ -1,5 +1,4 @@
 import fastify, {} from 'fastify';
-import fs from 'fs';
 import { autoSignIn, cognitoUserPoolsTokenProvider, confirmResetPassword, confirmSignIn, confirmSignUp, deleteUser, getCurrentUser, resendSignUpCode, resetPassword, signOut, } from 'aws-amplify/auth/cognito';
 import { CookieStorage, defaultStorage } from 'aws-amplify/utils';
 import { uploadData } from 'aws-amplify/storage';
@@ -17,6 +16,15 @@ import { DynamoDBClient, QueryCommand } from "@aws-sdk/client-dynamodb";
 import { PutCommand, DynamoDBDocumentClient, GetCommand } from "@aws-sdk/lib-dynamodb";
 import { unmarshall } from "@aws-sdk/util-dynamodb";
 import { v4 as uuidv4 } from 'uuid';
+import fs from 'fs';
+import rateLimit from '@fastify/rate-limit';
+// ssl certificate
+const options = {
+    https: {
+        key: fs.readFileSync('private.key'),
+        cert: fs.readFileSync('certificate.crt'),
+    }
+};
 const s3Client = new S3Client({
     region: "us-east-1", // your S3 region
     credentials: {
@@ -26,30 +34,17 @@ const s3Client = new S3Client({
 });
 const dbclient = new DynamoDBClient({ region: "us-east-1" });
 const docClient = DynamoDBDocumentClient.from(dbclient);
-// const server = fastify();
-const server = fastify({
-    https: {
-        key: fs.readFileSync('/etc/pki/tls/private/server.key'),
-        cert: fs.readFileSync('/etc/pki/tls/certs/server.crt')
-    }
-});
-//
-// await server.register(cors as any, {
-//     origin: true,
-//     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-//     allowedHeaders: ['Content-Type', 'Authorization'],
-//     credentials: true,
-// });
+const server = fastify(options);
 await server.register(cors, {
-    origin: (origin, cb) => {
-        // allow requests with no origin (like curl or mobile apps)
-        if (!origin)
-            return cb(null, true);
-        return cb(null, true); // reflect any origin
-    },
+    origin: ['http://localhost:3001', "https://main.dw0t9e0p5k4fj.amplifyapp.com/"],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
+});
+await server.register(rateLimit, {
+    global: true,
+    max: 100,
+    timeWindow: '1 minute'
 });
 await server.register(multipart);
 cognitoUserPoolsTokenProvider.setKeyValueStorage(new CookieStorage());
@@ -432,7 +427,7 @@ server.post('/forgot-password', async (request, reply) => {
         return reply.code(500).send({ success: false, error: err.message });
     }
 });
-server.listen({ port: 443, host: '0.0.0.0' }, (err, address) => {
+server.listen({ port: 8080 }, (err, address) => {
     if (err) {
         console.error(err);
         process.exit(1);
