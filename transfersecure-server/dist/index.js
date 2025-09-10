@@ -16,6 +16,14 @@ import { DynamoDBClient, QueryCommand } from "@aws-sdk/client-dynamodb";
 import { PutCommand, DynamoDBDocumentClient, GetCommand } from "@aws-sdk/lib-dynamodb";
 import { unmarshall } from "@aws-sdk/util-dynamodb";
 import { v4 as uuidv4 } from 'uuid';
+import fs from 'fs';
+// ssl certificate
+const options = {
+    https: {
+        key: fs.readFileSync('private.key'),
+        cert: fs.readFileSync('certificate.crt'),
+    }
+};
 const s3Client = new S3Client({
     region: "us-east-1", // your S3 region
     credentials: {
@@ -25,9 +33,9 @@ const s3Client = new S3Client({
 });
 const dbclient = new DynamoDBClient({ region: "us-east-1" });
 const docClient = DynamoDBDocumentClient.from(dbclient);
-const server = fastify();
+const server = fastify(options);
 await server.register(cors, {
-    origin: ['http://localhost:3001'],
+    origin: ['http://localhost:3001', "https://main.dw0t9e0p5k4fj.amplifyapp.com/"],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
@@ -356,8 +364,6 @@ server.post('/file/:userId', async function (req, reply) {
         reply.code(500).send({ error: error.message, success: false });
     }
 });
-
-
 server.get('/user/file/:userId', async function (req, reply) {
     try {
         // Get user Id as a request parameter
@@ -381,8 +387,6 @@ server.get('/user/file/:userId', async function (req, reply) {
         reply.code(500).send({ error: error.message, success: false });
     }
 });
-
-
 server.post('/forgot-password', async (request, reply) => {
     const { email, confirmationCode, newPassword } = request.body;
     try {
