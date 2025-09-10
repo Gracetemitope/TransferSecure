@@ -7,6 +7,9 @@ function ForgotPassword() {
     const [email, setEmail] = useState("");
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
+    const API_URL = process.env.REACT_APP_API_URL;
+        // || "http://localhost:8080";
+
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -15,7 +18,7 @@ function ForgotPassword() {
     const handleForgotPassword = async (email) => {
         setLoading(true);
         try {
-            const response = await fetch("http://localhost:8080/forgot-password", {
+            const response = await fetch( API_URL + "/forgot-password", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({ email }),
