@@ -12,7 +12,6 @@ import {
     signOut,
 } from 'aws-amplify/auth/cognito';
 import { CookieStorage, defaultStorage } from 'aws-amplify/utils';
-import { uploadData } from 'aws-amplify/storage';
 import { Amplify} from 'aws-amplify';
 import { fetchAuthSession, signIn, signUp } from 'aws-amplify/auth';
 import crypto from 'crypto';

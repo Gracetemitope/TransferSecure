@@ -1,7 +1,6 @@
 import fastify, {} from 'fastify';
 import { autoSignIn, cognitoUserPoolsTokenProvider, confirmResetPassword, confirmSignIn, confirmSignUp, deleteUser, getCurrentUser, resendSignUpCode, resetPassword, signOut, } from 'aws-amplify/auth/cognito';
 import { CookieStorage, defaultStorage } from 'aws-amplify/utils';
-import { uploadData } from 'aws-amplify/storage';
 import { Amplify } from 'aws-amplify';
 import { fetchAuthSession, signIn, signUp } from 'aws-amplify/auth';
 import crypto from 'crypto';
@@ -20,10 +19,10 @@ import fs from 'fs';
 import rateLimit from '@fastify/rate-limit';
 // ssl certificate
 const options = {
-    https: {
-        key: fs.readFileSync('private.key'),
-        cert: fs.readFileSync('certificate.crt'),
-    }
+//   https: {
+//     key: fs.readFileSync('private.key'),
+//     cert: fs.readFileSync('certificate.crt'),
+//   }
 };
 const s3Client = new S3Client({
     region: "us-east-1", // your S3 region
