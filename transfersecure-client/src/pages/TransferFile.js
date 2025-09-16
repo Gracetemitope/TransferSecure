@@ -56,12 +56,13 @@ function TransferFile() {
                         { label: "Upload file"}
                     ]}
                 />
-                <UploadSuccess />
+                {/*<UploadSuccess />*/}
                 <div className={"bg-white rounded-lg shadow p-6"}>
                     <div className={"grid gird-cols-1 md:grid-cols-2 gap-6"}>
                         <div className={"space-y-4"}>
                             <input
                                 type="text"
+                                name="filename"
                                 placeholder="File name"
                                 className={"w-full rounded-full border border-gray-200 px-4 py-3 focus:outline-none focus:shadow-outline"}
                                value={formState.filename}
@@ -70,6 +71,7 @@ function TransferFile() {
                                 />
                             <input
                                 type="email"
+                                name="email"
                                 placeholder="Recipient's email address"
                                 className="w-full rounded-full border border-gray-200 px-4 py-3 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                 value={formState.email}
