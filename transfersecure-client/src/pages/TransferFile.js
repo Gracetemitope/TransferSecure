@@ -36,7 +36,7 @@ function TransferFile() {
             console.log(data);
             if(response.ok) {
                 console.log(response);
-                const fileData = response.data[0]
+                const fileData = data.data[0]
                 navigate("/upload-successful", {
                     state: {
                         fileURL: fileData.url,
