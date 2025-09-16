@@ -12,8 +12,9 @@ function TransferFile() {
         duration: "",
         filename: "",
     })
-    const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8080";
+    const API_URL = process.env.REACT_APP_API_URL;
     const [loading, setLoading] = useState(false);
+    const userId = localStorage.getItem("userId");
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -24,14 +25,16 @@ function TransferFile() {
             formData.append("email", formState.email);
             formData.append("duration", formState.duration);
             formData.append("filename", formState.filename);
-            const response = await fetch(API_URL + "/file", {
+            const response = await fetch(`${API_URL}/file/${userId}`, {
                 method: "POST",
                 body: formData,
+                credentials: "include"
             });
             const data = await response.json();
             console.log(data);
             if(response.ok) {
                 alert("Successfully uploaded");
+                console.log(response);
             }
 
         } catch (error) {
