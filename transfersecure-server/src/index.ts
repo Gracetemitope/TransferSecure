@@ -6,10 +6,13 @@ import {
     confirmSignIn,
     confirmSignUp,
     deleteUser,
+    fetchUserAttributes,
     getCurrentUser,
     resendSignUpCode,
     resetPassword,
     signOut,
+    updatePassword,
+    updateUserAttributes,
 } from 'aws-amplify/auth/cognito';
 import { CookieStorage, defaultStorage } from 'aws-amplify/utils';
 import { Amplify} from 'aws-amplify';
@@ -28,6 +31,13 @@ import { unmarshall } from "@aws-sdk/util-dynamodb";
 import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs'
 import rateLimit from '@fastify/rate-limit';
+import {
+  SecretsManagerClient,
+  GetSecretValueCommand,
+} from "@aws-sdk/client-secrets-manager";
+import { scanUrlWithVirusTotal } from './virusTotalService.js';
+import { getVirusTotalApiKey } from './awsSecrets.js';
+
 // ssl certificate
 // const options = {
 //   https: {
@@ -253,6 +263,7 @@ server.post('/login', async (request, reply) => {
             if (confirmed.isSignedIn) {
                 const { username, userId } = await getCurrentUser();
                 const session = await fetchAuthSession();
+                const attributes = await fetchUserAttributes();
 
                 const tokens = {
                     accessToken: session.tokens?.accessToken,
@@ -263,7 +274,13 @@ server.post('/login', async (request, reply) => {
 
                 return reply.code(200).send({
                     success: true,
-                    result: tokens,
+                    result: {
+                        ...tokens,
+                        firstName: attributes.given_name,
+                        lastName: attributes.family_name,
+                        zoneinfo: attributes.zoneinfo,
+                        email: attributes.email,
+                    },
                 });
             }
         }
@@ -294,6 +311,104 @@ server.post('/login', async (request, reply) => {
     }
 });
 
+server.put("/change-password", async (request, reply) => {
+  const { oldPassword, newPassword, confirmNewPassword } = request.body as {
+    oldPassword: string;
+    newPassword: string;
+    confirmNewPassword: string;
+  };
+
+  if (!oldPassword || !newPassword || !confirmNewPassword) {
+    return reply.code(400).send({
+      success: false,
+      error: "All fields are required",
+    });
+  }
+
+  if (newPassword !== confirmNewPassword) {
+    return reply.code(400).send({
+      success: false,
+      error: "New password and confirmation do not match",
+    });
+  }
+
+  try {
+    await updatePassword({
+      oldPassword,
+      newPassword,
+    });
+
+    return reply.code(200).send({
+      success: true,
+      message: "Password updated successfully",
+    });
+  } catch (err) {
+    console.error("Error changing password:", err);
+    return reply.code(400).send({
+      success: false,
+      error: (err as Error).message,
+    });
+  }
+});
+
+server.post(
+  "/update-profile",
+  {
+    schema: {
+      body: {
+        type: "object",
+        required: ["firstName", "lastName", "zoneinfo"],
+        properties: {
+          firstName: { type: "string", minLength: 1 },
+          lastName: { type: "string", minLength: 1 },
+          zoneinfo: { type: "string", minLength: 2 },
+        },
+      },
+    },
+  },
+  async (request, reply) => {
+    const { firstName, lastName, zoneinfo } = request.body as {
+      firstName: string;
+      lastName: string;
+      zoneinfo: string;
+    };
+
+    try {
+      const user = await getCurrentUser();
+        const attributes = await fetchUserAttributes();
+
+      await updateUserAttributes({
+        userAttributes: {
+          given_name: firstName,
+          family_name: lastName,
+          zoneinfo: zoneinfo,
+        },
+      });
+
+      reply.code(200).send({
+        success: true,
+        message: "Profile updated successfully",
+        data: {
+          userId: user.userId,
+          username: user.username,
+          email: attributes.email,
+          firstName: firstName,
+          lastName: lastName,
+          zoneinfo: zoneinfo,
+        },
+      });
+    } catch (err) {
+      console.error("Error updating profile:", err);
+
+      reply.code(400).send({
+        success: false,
+        error: (err as Error).message,
+      });
+    }
+  }
+);
+
+
 server.post('/sign-out', async (request, reply) => {
     await signOut({ global: true });
     reply.code(200).send({ success: true });
@@ -319,6 +434,34 @@ server.post('/delete-account', async (request, reply) => {
     } catch (err) {
         reply.code(500).send({ error: (err as Error).message, success: false });
     }
+});
+
+// '''
+// Secrets Manager
+// '''
+
+server.post("/scan", async (request, reply) => {
+    try {
+        const { url } = request.body as { url: string };
+        const result = await scanUrlWithVirusTotal(url);
+        reply.code(200).send({ success: true, data: result });
+    } catch (error) {
+        reply.code(500).send({ error: (error as Error).message, success: false });
+    }
+})
+
+server.get("/test-secret", async (req, res) => {
+  try {
+    const apiKey = await getVirusTotalApiKey();
+
+    res.send({
+      success: true,
+      secretPreview: apiKey.slice(0, 4) + "****",
+    });
+  } catch (err) {
+    console.error("Error fetching secret:", err);
+    res.status(500).send({ success: false, error: "Failed to fetch secret" });
+  }
 });
 
 // '''
