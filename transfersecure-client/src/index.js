@@ -11,6 +11,8 @@ import ConfirmEmail from "./pages/authPages/ConfirmEmail";
 import ForgotPassword from "./pages/authPages/ForgotPassword";
 import ResetPassword from "./pages/authPages/ResetPassword";
 import TransferFile from "./pages/TransferFile";
+import Settings from "./pages/Settings";
+import UploadSuccess from "./components/UploadSuccess";
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
@@ -24,6 +26,9 @@ root.render(
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/transfer" element={<TransferFile />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/upload-successful" element={<UploadSuccess />} />
+
         </Routes>
   </BrowserRouter>
 );

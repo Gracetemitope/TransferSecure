@@ -4,6 +4,7 @@ import BreadCrumb from "../components/BreadCrumb";
 import fileIcon from "../assets/File.png"
 import UploadSuccess from "../components/UploadSuccess";
 import {useState} from "react";
+import {useNavigate} from "react-router-dom";
 
 function TransferFile() {
     const [formState, setFormState] = useState({
@@ -15,6 +16,7 @@ function TransferFile() {
     const API_URL = process.env.REACT_APP_API_URL;
     const [loading, setLoading] = useState(false);
     const userId = localStorage.getItem("userId");
+    const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -33,8 +35,16 @@ function TransferFile() {
             const data = await response.json();
             console.log(data);
             if(response.ok) {
-                alert("Successfully uploaded");
                 console.log(response);
+                const fileData = response.data[0]
+                navigate("/upload-successful", {
+                    state: {
+                        fileURL: fileData.url,
+                        fileName: fileData.filename,
+                        fileSize: fileData.size,
+                        maliciousState: fileData.malicious,
+                    }
+                });
             }
 
         } catch (error) {

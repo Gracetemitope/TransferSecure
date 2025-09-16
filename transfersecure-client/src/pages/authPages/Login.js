@@ -35,7 +35,7 @@ function Login() {
             })
             const data = await response.json();
             if (response.ok && data.success) {
-                localStorage.setItem("username", data.result.userName);
+                localStorage.setItem("userId", data.result.userId);
                 navigate("/");
             } else {
                 alert("Login failed");
