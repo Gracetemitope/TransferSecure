@@ -18,12 +18,12 @@ import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs';
 import rateLimit from '@fastify/rate-limit';
 // ssl certificate
-const options = {
+// const options = {
 //   https: {
 //     key: fs.readFileSync('private.key'),
 //     cert: fs.readFileSync('certificate.crt'),
 //   }
-};
+// };
 const s3Client = new S3Client({
     region: "us-east-1", // your S3 region
     credentials: {
@@ -33,7 +33,7 @@ const s3Client = new S3Client({
 });
 const dbclient = new DynamoDBClient({ region: "us-east-1" });
 const docClient = DynamoDBDocumentClient.from(dbclient);
-const server = fastify(options);
+const server = fastify();
 await server.register(cors, {
     origin: ['http://localhost:3001', "https://main.dw0t9e0p5k4fj.amplifyapp.com/"],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
@@ -275,7 +275,7 @@ server.post('/file/:userId', async function (req, reply) {
         const files = [];
         // Get user ID from params
         const { userId } = req.params;
-        console.log("User ID:", userId);
+        // console.log("User ID:", userId);
         // Process each part once
         for await (const part of parts) {
             if (part.type === 'field') {
@@ -291,6 +291,7 @@ server.post('/file/:userId', async function (req, reply) {
             }
             if (part.type === "file") {
                 files.push(part);
+                // console.log("User ID:", part);
             }
         }
         // console.log("Email:", email);
@@ -318,6 +319,7 @@ server.post('/file/:userId', async function (req, reply) {
             if (res?.status !== 404 && res?.data?.attributes?.last_analysis_stats?.malicious > 0) {
                 isMalicious = true;
             }
+            const filesize = (file.file.bytesRead / (1024 * 1024)).toFixed(2);
             if (!isMalicious) {
                 // Upload to S3
                 const command = new PutObjectCommand({
@@ -333,10 +335,10 @@ server.post('/file/:userId', async function (req, reply) {
                     Key: fileKey
                 });
                 const downloadUrl = await getSignedUrl(s3Client, command1, { expiresIn: 604800 });
-                results.push({ filename: file.filename, url: downloadUrl, malicious: false });
+                results.push({ filename: file.filename, url: downloadUrl, malicious: false, size: filesize });
             }
             else {
-                results.push({ filename: file.filename, malicious: true });
+                results.push({ filename: file.filename, malicious: true, size: filesize });
             }
         }
         // Filter non-malicious files
@@ -385,8 +387,10 @@ server.get('/user/file/:userId', async function (req, reply) {
         // Execute command
         const response = await docClient.send(command);
         const userFiles = response.Items.map(item => unmarshall(item));
+        // Count the files
+        const fileCount = userFiles.length;
         // Reply with user file information
-        reply.code(200).send({ data: userFiles, success: true });
+        reply.code(200).send({ data: userFiles, success: true, totalFiles: fileCount });
     }
     catch (error) {
         reply.code(500).send({ error: error.message, success: false });
@@ -426,7 +430,7 @@ server.post('/forgot-password', async (request, reply) => {
         return reply.code(500).send({ success: false, error: err.message });
     }
 });
-server.listen({ port: 8080 }, (err, address) => {
+server.listen({ port: 8080, host: '0.0.0.0' }, (err, address) => {
     if (err) {
         console.error(err);
         process.exit(1);

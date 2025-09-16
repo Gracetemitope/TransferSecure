@@ -29,12 +29,12 @@ import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs'
 import rateLimit from '@fastify/rate-limit';
 // ssl certificate
-const options = {
-  https: {
-    key: fs.readFileSync('private.key'),
-    cert: fs.readFileSync('certificate.crt'),
-  }
-};
+// const options = {
+//   https: {
+//     key: fs.readFileSync('private.key'),
+//     cert: fs.readFileSync('certificate.crt'),
+//   }
+// };
 
 const s3Client = new S3Client({
   region: "us-east-1", // your S3 region
@@ -48,7 +48,7 @@ const dbclient = new DynamoDBClient({region: "us-east-1"});
 
 const docClient = DynamoDBDocumentClient.from(dbclient)
 
-const server = fastify(options);
+const server = fastify();
 
 await server.register(cors as any, {
     origin: ['http://localhost:3001', "https://main.dw0t9e0p5k4fj.amplifyapp.com/"],
@@ -339,7 +339,7 @@ server.post('/file/:userId', async function (req, reply) {
 
         // Get user ID from params
         const { userId } = req.params as { userId: string };
-        console.log("User ID:", userId);
+        // console.log("User ID:", userId);
 
         // Process each part once
         for await (const part of parts) {
@@ -358,6 +358,7 @@ server.post('/file/:userId', async function (req, reply) {
 
             if (part.type === "file") {
                 files.push(part);
+                // console.log("User ID:", part);
             }
         }
 
@@ -365,7 +366,7 @@ server.post('/file/:userId', async function (req, reply) {
         // console.log("Duration:", duration);
 
         // Prepare results list
-        const results: { filename: string; url?: string; malicious: boolean }[] = [];
+        const results: { filename: string; url?: string; malicious: boolean, size: string}[] = [];
 
         // Process each file
         for (const file of files) {
@@ -392,6 +393,8 @@ server.post('/file/:userId', async function (req, reply) {
                 isMalicious = true;
             }
 
+            const filesize = (file.file.bytesRead /(1024 *1024)).toFixed(2)
+
             if (!isMalicious) {
                 // Upload to S3
                 const command = new PutObjectCommand({
@@ -409,9 +412,11 @@ server.post('/file/:userId', async function (req, reply) {
                 });
                 const downloadUrl = await getSignedUrl(s3Client, command1, { expiresIn: 604800 });
 
-                results.push({ filename: file.filename, url: downloadUrl, malicious: false });
+                
+
+                results.push({ filename: file.filename, url: downloadUrl, malicious: false, size: filesize});
             } else {
-                results.push({ filename: file.filename, malicious: true });
+                results.push({ filename: file.filename, malicious: true, size: filesize });
             }
         }
 
@@ -473,8 +478,12 @@ server.get('/user/file/:userId', async function (req, reply){
 
         const userFiles = response.Items!.map(item => unmarshall(item))
 
+        // Count the files
+        const fileCount = userFiles.length;
+
+
         // Reply with user file information
-        reply.code(200).send({data:userFiles,success: true })
+        reply.code(200).send({data:userFiles,success: true,  totalFiles: fileCount})
         
     } catch (error) {
         reply.code(500).send({ error: (error as Error).message, success: false });
@@ -523,7 +532,7 @@ server.post('/forgot-password', async (request, reply) => {
     }
 });
 
-server.listen({ port: 8080 }, (err, address) => {
+server.listen({ port: 8080, host:'0.0.0.0' }, (err, address) => {
     if (err) {
         console.error(err);
         process.exit(1);
