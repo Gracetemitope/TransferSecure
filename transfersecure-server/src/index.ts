@@ -61,7 +61,7 @@ const docClient = DynamoDBDocumentClient.from(dbclient)
 const server = fastify();
 
 await server.register(cors as any, {
-    origin: ['*', "https://main.dw0t9e0p5k4fj.amplifyapp.com/"],
+    origin: ["https://main.dw0t9e0p5k4fj.amplifyapp.com", "http://localhost:3000"],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
@@ -427,7 +427,7 @@ server.post('/refresh-token', async (request, reply) => {
     }
 });
 
-server.post('/delete-account', async (request, reply) => {
+server.delete('/delete-account', async (request, reply) => {
     try {
         await deleteUser();
         reply.code(200).send({ success: true });
