@@ -25,7 +25,7 @@ function ChangePassword() {
         setLoading(true);
         try {
             const response = await fetch(API_URL + "/change-password", {
-                method: "POST",
+                method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
                 },
@@ -37,7 +37,8 @@ function ChangePassword() {
                 }),
             })
             console.log("Submitting:", formState);
-            alert("Password changed successfully (demo)");
+            alert("Password changed successfully");
+            setFormState({ currentPassword: "", newPassword: "", confirmPassword: "" });
         } catch (error) {
             console.error(error);
         } finally {
