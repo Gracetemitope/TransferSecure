@@ -24,7 +24,7 @@ function ViewProfile() {
                     <BreadCrumb
                         items={[
                             { label: "Home", to: "/"},
-                            { label: "Upload file"}
+                            { label: "Profile"}
                         ]}
                     />
         <div className="max-w-md mx-auto bg-white shadow rounded-lg p-6">
