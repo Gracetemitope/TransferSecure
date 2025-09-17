@@ -1,5 +1,5 @@
 import Logo from '../../assets/Logo.png';
-import ProfileMenu from "./ProfileMenu";
+import ProfileMenu from "../Profile/ProfileMenu";
 
 function Navbar() {
     const firstName = localStorage.getItem("firstName");
