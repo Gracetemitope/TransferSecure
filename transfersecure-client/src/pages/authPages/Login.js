@@ -37,7 +37,11 @@ function Login() {
       if (response.ok && data.success) {
         localStorage.setItem("userId", data.result.userId);
           localStorage.setItem("firstName", data.result.idToken.payload.given_name);
-        navigate("/");
+          localStorage.setItem("lastName", data.result.idToken.payload.family_name);
+          localStorage.setItem("country", data.result.idToken.payload.zoneinfo);
+          localStorage.setItem("email", data.result.idToken.payload.email);
+
+          navigate("/");
       } else {
         alert("Login failed");
       }
