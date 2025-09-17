@@ -14,6 +14,8 @@ import TransferFile from "./pages/TransferFile";
 import Settings from "./pages/Settings";
 import UploadSuccess from "./components/UploadSuccess";
 import DownloadPage from "./pages/DownloadPage";
+import ViewProfile from "./components/Profile/ViewProfile";
+import UpdateProfile from "./components/Profile/UpdateProfile";
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
@@ -30,6 +32,10 @@ root.render(
             <Route path="/settings" element={<Settings />} />
             <Route path="/upload-successful" element={<UploadSuccess />} />
             <Route path="/download-file" element={<DownloadPage />} />
+            <Route path="/profile" element={<ViewProfile />} />
+            <Route path="/update-profile" element={<UpdateProfile />} />
+
+
 
 
         </Routes>
