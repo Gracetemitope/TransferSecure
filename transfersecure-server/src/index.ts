@@ -1,4 +1,5 @@
 import fastify, { type FastifyRequest } from 'fastify';
+import { tmpName } from "tmp-promise";
 import {
     autoSignIn,
     cognitoUserPoolsTokenProvider,
@@ -17,26 +18,33 @@ import {
 import { CookieStorage, defaultStorage } from 'aws-amplify/utils';
 import { Amplify} from 'aws-amplify';
 import { fetchAuthSession, signIn, signUp } from 'aws-amplify/auth';
-import crypto from 'crypto';
+import crypto, { createHash } from 'crypto';
 import cors from '@fastify/cors';
 import 'dotenv/config';
 import multipart, { type MultipartFile } from '@fastify/multipart';
 import { calculateFutureDateTime, generateFileHash } from './fileHash.js';
 import axios from 'axios';
-import { S3Client,PutObjectCommand ,GetObjectCommand  } from "@aws-sdk/client-s3";
+import { S3Client,PutObjectCommand , CreateMultipartUploadCommand,
+  UploadPartCommand,
+  CompleteMultipartUploadCommand,
+  AbortMultipartUploadCommand,
+  GetObjectCommand, } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { DynamoDBClient, QueryCommand  } from "@aws-sdk/client-dynamodb"
 import { PutCommand, DynamoDBDocumentClient, GetCommand } from "@aws-sdk/lib-dynamodb";
 import { unmarshall } from "@aws-sdk/util-dynamodb";
 import { v4 as uuidv4 } from 'uuid';
+import sgMail from '@sendgrid/mail'
 import fs from 'fs'
 import rateLimit from '@fastify/rate-limit';
+import { Upload } from "@aws-sdk/lib-storage";
 import {
   SecretsManagerClient,
   GetSecretValueCommand,
 } from "@aws-sdk/client-secrets-manager";
 import { scanUrlWithVirusTotal } from './virusTotalService.js';
 import { getVirusTotalApiKey } from './awsSecrets.js';
+import { PassThrough } from 'stream';
 
 // ssl certificate
 // const options = {
@@ -61,11 +69,13 @@ const docClient = DynamoDBDocumentClient.from(dbclient)
 const server = fastify();
 
 await server.register(cors as any, {
-    origin: ['*', "https://main.dw0t9e0p5k4fj.amplifyapp.com/"],
+    origin: ['http://localhost:3000', "https://main.dw0t9e0p5k4fj.amplifyapp.com"],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
 });
+
+
 
 await server.register(rateLimit, {
     global: true, 
@@ -73,7 +83,9 @@ await server.register(rateLimit, {
     timeWindow: '1 minute'
 });
 
-await server.register(multipart);
+await server.register(multipart,{limits: {
+        fileSize: 1024 * 1024 * 1024
+    }});
 
 cognitoUserPoolsTokenProvider.setKeyValueStorage(new CookieStorage());
 cognitoUserPoolsTokenProvider.setKeyValueStorage(defaultStorage);
@@ -472,126 +484,180 @@ server.get("/test-secret", async (req, res) => {
 
 server.post('/file/:userId', async function (req, reply) {
     try {
-        // Get all the multipart parts (files + fields)
-        const parts = req.parts(); 
+
+        // ------------------------------
+        // 1️⃣ Parse multipart form data
+        // ------------------------------
+        const parts = req.parts();
+        const { userId } = req.params as { userId: string };
 
         let email: string | undefined;
         let duration: string | undefined;
         let fileName: string | undefined;
-        const files: MultipartFile[] = [];
+        const results: { filename: string; url?: string; malicious: boolean; size?: string }[] = [];
 
-        // Get user ID from params
-        const { userId } = req.params as { userId: string };
-        // console.log("User ID:", userId);
-
-        // Process each part once
         for await (const part of parts) {
-            if (part.type === 'field') {
-                if (part.fieldname === "email") {
-                    email = part.value as string;
-                }
-                if (part.fieldname === "duration") {
-                    duration = (await calculateFutureDateTime(parseInt(part.value as string))).toLocaleString();
-                }
-                if (part.fieldname === "filename") {
-                    fileName =part.value as string;
-                }
-
+        if (part.type === "field") {
+            if (part.fieldname === "email") email = part.value as string;
+            if (part.fieldname === "duration") {
+            duration = (await calculateFutureDateTime(parseInt(part.value as string))).toLocaleString();
             }
-
-            if (part.type === "file") {
-                files.push(part);
-                // console.log("User ID:", part);
-            }
+            if (part.fieldname === "filename") fileName = part.value as string;
         }
 
-        // console.log("Email:", email);
-        // console.log("Duration:", duration);
+        if (part.type === "file") {
+            // 1️⃣ Save file to temp and calculate SHA-256
+            const tempFile = await tmpName();
+            const hash = createHash("sha256");
+            let totalBytes = 0;
 
-        // Prepare results list
-        const results: { filename: string; url?: string; malicious: boolean, size: string}[] = [];
+            const writeStream = fs.createWriteStream(tempFile);
+            for await (const chunk of part.file) {
 
-        // Process each file
-        for (const file of files) {
-            const sha256 = await generateFileHash(file, 'sha256');
+            hash.update(chunk);
+            totalBytes += chunk.length;
+            writeStream.write(chunk);
+            }
+            writeStream.end();
 
-            const options = {
-                method: 'GET',
-                url: `https://www.virustotal.com/api/v3/files/${sha256}`,
-                headers: {
-                    accept: 'application/json',
-                    'x-apikey': process.env.VIRUS_TOTAL as string,
-                },
-            };
+            const sha256 = hash.digest("hex");
 
-            const res = await axios.request(options).catch(err => err.response);
-            const chunks: Buffer[] = [];
-            for await (const chunk of file.file) chunks.push(chunk);
+            // 2️⃣ Check VirusTotal
+            const vtRes = await axios
+            .get(`https://www.virustotal.com/api/v3/files/${sha256}`, {
+                headers: { "x-apikey": process.env.VIRUS_TOTAL as string },
+            })
+            .catch((err) => err.response);
 
-            const buffer = Buffer.concat(chunks);
-            const fileKey = `${Date.now()}-${file.filename}`;
+            const isMalicious =
+            vtRes?.status !== 404 &&
+            vtRes?.data?.attributes?.last_analysis_stats?.malicious > 0;
 
-            let isMalicious = false;
-            if (res?.status !== 404 && res?.data?.attributes?.last_analysis_stats?.malicious > 0) {
-                isMalicious = true;
+            if (isMalicious) {
+            results.push({ filename: part.filename, malicious: true });
+            fs.unlinkSync(tempFile);
+            continue; // skip uploading
             }
 
-            const filesize = (file.file.bytesRead /(1024 *1024)).toFixed(2)
+            // 3️⃣ Multipart upload to S3
+            const fileKey = `${Date.now()}-${part.filename}`;
+            const createCmd = new CreateMultipartUploadCommand({
+            Bucket: "securefile-transfer3c92a-dev",
+            Key: fileKey,
+            });
+            const createRes = await s3Client.send(createCmd);
+            const uploadId = createRes.UploadId!;
+            const uploadParts: { ETag: string; PartNumber: number }[] = [];
+            const partSize = 5 * 1024 * 1024; // 5MB
+            let partNumber = 1;
 
-            if (!isMalicious) {
-                // Upload to S3
-                const command = new PutObjectCommand({
-                    Bucket: "securefile-transfer3c92a-dev",
-                    Key: fileKey,
-                    Body: buffer,
-                    ContentLength: buffer.length,
+            const fileStream = fs.createReadStream(tempFile, { highWaterMark: partSize });
+            let buffer: Buffer[] = [];
+
+            for await (const chunk of fileStream) {
+
+            buffer.push(chunk as Buffer);
+            const size = Buffer.concat(buffer).length;
+            
+            // Ensuring the size of the part is not more than 5mb
+            if (size >= partSize) {
+                const partBuffer = Buffer.concat(buffer);
+                const uploadPartCmd = new UploadPartCommand({
+                Bucket: "securefile-transfer3c92a-dev",
+                Key: fileKey,
+                UploadId: uploadId,
+                PartNumber: partNumber,
+                Body: partBuffer,
                 });
-                await s3Client.send(command);
 
-                // Get download URL
-                const command1 = new GetObjectCommand({
-                    Bucket: "securefile-transfer3c92a-dev",
-                    Key: fileKey
-                });
-                const downloadUrl = await getSignedUrl(s3Client, command1, { expiresIn: 604800 });
+                // Upload part
+                const uploadRes = await s3Client.send(uploadPartCmd);
 
-                
-
-                results.push({ filename: file.filename, url: downloadUrl, malicious: false, size: filesize});
-            } else {
-                results.push({ filename: file.filename, malicious: true, size: filesize });
+                // Store the part tag to an array
+                uploadParts.push({ ETag: uploadRes.ETag!, PartNumber: partNumber });
+                partNumber++;
+                buffer = [];
             }
-        }
+            }
 
-        // Filter non-malicious files
-        const cleanFiles = results.filter(f => !f.malicious);
-
-        if (cleanFiles.length > 0) {
-            // Save metadata to DynamoDB
-            const dbCommand = new PutCommand({
-                TableName: "Files",
-                Item: {
-                    id: uuidv4(),
-                    user_id: userId,
-                    file_name:fileName,
-                    files: cleanFiles,
-                    created_at: new Date().toLocaleString(),
-                    duration: duration,
-                    email: email
-                },
+            // Upload remaining buffer
+            if (buffer.length > 0) {
+            const partBuffer = Buffer.concat(buffer);
+            const uploadPartCmd = new UploadPartCommand({
+                Bucket: "securefile-transfer3c92a-dev",
+                Key: fileKey,
+                UploadId: uploadId,
+                PartNumber: partNumber,
+                Body: partBuffer,
             });
 
-            const dbRes = await docClient.send(dbCommand);
-
-            if (dbRes.$metadata.httpStatusCode === 200) {
-                return reply.code(200).send({ success: true, data: results });
-            } else {
-                return reply.code(500).send({ success: false });
+            const uploadRes = await s3Client.send(uploadPartCmd);
+            uploadParts.push({ ETag: uploadRes.ETag!, PartNumber: partNumber });
             }
+
+            // Complete upload
+            await s3Client.send(
+            new CompleteMultipartUploadCommand({
+                Bucket: "securefile-transfer3c92a-dev",
+                Key: fileKey,
+                UploadId: uploadId,
+                MultipartUpload: { Parts: uploadParts },
+            })
+            );
+
+            // Generate download URL
+            const command1 = new GetObjectCommand({ Bucket: "securefile-transfer3c92a-dev", Key: fileKey });
+            const downloadUrl = await getSignedUrl(s3Client, command1, { expiresIn: 604800 });
+
+            // Push non malicious file
+            results.push({ filename: part.filename, url: downloadUrl, malicious: false, size: (totalBytes / 1024 / 1024).toFixed(2) });
+
+            // Remove temp file
+            fs.unlinkSync(tempFile);
+        }
+        }
+
+        // Save metadata to DynamoDB if ther is any none malicious file
+        const cleanFiles = results.filter((f) => !f.malicious);
+        if (cleanFiles.length > 0) {
+        const dbCommand = new PutCommand({
+            TableName: "Files",
+            Item: {
+            id: uuidv4(),
+            user_id: userId,
+            file_name: fileName,
+            files: cleanFiles,
+            created_at: new Date().toLocaleString(),
+            duration,
+            email,
+            },
+        });
+        await docClient.send(dbCommand).then(()=>{
+            sgMail.setApiKey(process.env.SENDGRID_API_KEY!)
+
+
+            const msg = {
+            to: email, // Change to your recipient
+            from: process.env.SENDER_EMAIL!, // Change to your verified sender
+            subject: 'File shared',
+            text: `A file has been shared with you: ${cleanFiles[0].url}`,
+            html: `<strong>A file has been shared with you \n 
+            
+            File link \n
+            ${cleanFiles[0].url}</strong>`,
+            }
+            sgMail
+            .send(msg)
+            .then(() => {
+                // console.log('Email sent')
+            })
+            .catch((error) => {
+                console.error(error.response?.body)
+            })
+        });
         }
 
         return reply.code(200).send({ success: true, data: results });
-
     } catch (error) {
         reply.code(500).send({ error: (error as Error).message, success: false });
     }
