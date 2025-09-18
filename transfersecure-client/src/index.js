@@ -16,6 +16,7 @@ import UploadSuccess from "./components/UploadSuccess";
 import DownloadPage from "./pages/DownloadPage";
 import ViewProfile from "./components/Profile/ViewProfile";
 import UpdateProfile from "./components/Profile/UpdateProfile";
+import Dashboard from "./pages/Dashboard";
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
@@ -34,8 +35,7 @@ root.render(
             <Route path="/download-file" element={<DownloadPage />} />
             <Route path="/profile" element={<ViewProfile />} />
             <Route path="/update-profile" element={<UpdateProfile />} />
-
-
+            <Route path="/dashboard" element={<Dashboard />} />
 
 
         </Routes>
