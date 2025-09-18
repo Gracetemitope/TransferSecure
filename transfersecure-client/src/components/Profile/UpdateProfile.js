@@ -10,7 +10,6 @@ function UpdateProfile() {
     const userData = location.state || {};
     const API_URL = process.env.REACT_APP_API_URL;
 
-
     const [form, setForm] = useState({
         firstName: userData.firstName || "",
         lastName: userData.lastName || "",

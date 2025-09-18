@@ -40,6 +40,7 @@ function Login() {
           localStorage.setItem("lastName", data.result.idToken.payload.family_name);
           localStorage.setItem("country", data.result.idToken.payload.zoneinfo);
           localStorage.setItem("email", data.result.idToken.payload.email);
+          localStorage.setItem("authToken", JSON.stringify(data.result.idToken.payload));
 
           navigate("/");
       } else {

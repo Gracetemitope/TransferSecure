@@ -17,9 +17,12 @@ import DownloadPage from "./pages/DownloadPage";
 import ViewProfile from "./components/Profile/ViewProfile";
 import UpdateProfile from "./components/Profile/UpdateProfile";
 import Dashboard from "./pages/Dashboard";
+import ProtectedRoute from "./components/ProtectedRoute";
+import {AuthProvider} from "./context/AuthContext";
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
+    <AuthProvider>
     <BrowserRouter>
         <Routes>
             <Route path="/" element={< App />} />
@@ -29,17 +32,28 @@ root.render(
             <Route path="confirm" element={<ConfirmEmail />} />
             <Route path="/forgot-password" element={<ForgotPassword />} />
             <Route path="/reset-password" element={<ResetPassword />} />
-            <Route path="/transfer" element={<TransferFile />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/upload-successful" element={<UploadSuccess />} />
+            <Route path="/transfer" element={<ProtectedRoute><TransferFile /> </ProtectedRoute>} />
+            <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+            <Route path="/upload-successful" element={
+                <ProtectedRoute>
+                    <UploadSuccess />
+                </ProtectedRoute>
+            } />
             <Route path="/download-file" element={<DownloadPage />} />
-            <Route path="/profile" element={<ViewProfile />} />
+            <Route path="/profile" element={<ProtectedRoute>
+                <ViewProfile />
+            </ProtectedRoute>
+            } />
             <Route path="/update-profile" element={<UpdateProfile />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-
+            <Route path="/dashboard" element={
+                <ProtectedRoute>
+                <Dashboard />
+                </ProtectedRoute>
+            } />
 
         </Routes>
   </BrowserRouter>
+    </AuthProvider>
 );
 
 // If you want to start measuring performance in your app, pass a function

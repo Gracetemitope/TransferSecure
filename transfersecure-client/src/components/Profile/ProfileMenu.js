@@ -1,11 +1,14 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import {useAuth} from "../../context/AuthContext";
 
 function ProfileMenu({ firstName }) {
     const [open, setOpen] = useState(false);
     const navigate = useNavigate();
     const menuRef = useRef();
     const API_URL = process.env.REACT_APP_API_URL;
+    const { logout } = useAuth();
+
 
     // Close menu if clicked outside
     useEffect(() => {
@@ -31,8 +34,8 @@ function ProfileMenu({ firstName }) {
             });
         } catch (error) {
             console.error("Logout failed:", error);
-        } finally {
-            localStorage.clear();
+        }  finally {
+            logout();
             navigate("/login");
         }
     };
