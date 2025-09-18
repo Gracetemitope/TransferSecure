@@ -15,7 +15,7 @@ import {
     updatePassword,
     updateUserAttributes,
 } from 'aws-amplify/auth/cognito';
-import fastifyCron from 'fastify-cron';
+
 import { CookieStorage, defaultStorage } from 'aws-amplify/utils';
 import { Amplify} from 'aws-amplify';
 import { fetchAuthSession, signIn, signUp } from 'aws-amplify/auth';
@@ -45,9 +45,9 @@ import {
   SecretsManagerClient,
   GetSecretValueCommand,
 } from "@aws-sdk/client-secrets-manager";
-import { scanUrlWithVirusTotal } from './virusTotalService.js';
-import { getVirusTotalApiKey } from './awsSecrets.js';
-import { PassThrough } from 'stream';
+// import { scanUrlWithVirusTotal } from './virusTotalService.js';
+// import { getVirusTotalApiKey } from './awsSecrets.js';
+// import { PassThrough } from 'stream';
 import { getSecrets } from './helper.js';
 
 // ssl certificate
@@ -85,7 +85,7 @@ await server.register(cors as any, {
 const job = new CronJob(
 	'0 12 * * *', // cronTime
 	async function () {
-		console.log('You will see this message every second');
+		// console.log('You will see this message every second');
         await updateFile()
 	}, // onTick
 	null, // onComplete
@@ -610,7 +610,7 @@ async function updateFile(){
             //Check VirusTotal if the hash is malicious
             const vtRes = await axios
             .get(`https://www.virustotal.com/api/v3/files/${sha256}`, {
-                headers: { "x-apikey": process.env.VIRUS_TOTAL as string },
+                headers: { "x-apikey": secrets.VIRUS_TOTAL as string },
             })
             .catch((err) => err.response);
 
@@ -737,7 +737,7 @@ async function updateFile(){
 
             await docClient.send(dbCommand).then(()=>{
                 // Send email to the reciever
-                sgMail.setApiKey(process.env.SENDGRID_API_KEY!)
+                sgMail.setApiKey(secrets.SENDGRID_API_KEY!)
                 const encodedUrl = encodeURIComponent(cleanFiles[0].url!);
                 const finalUrl = `https://main.dw0t9e0p5k4fj.amplifyapp.com/download-file?download=${encodedUrl}`
                 const emailContent =`
@@ -820,7 +820,7 @@ async function updateFile(){
            
             const msg = {
             to: email, // Change to your recipient
-            from: process.env.SENDER_EMAIL!, // Change to your verified sender
+            from: secrets.SENDER_EMAIL!, // Change to your verified sender
             subject: 'File shared via TransferSecure',
             text: emailContent,
             html:  emailContent,
@@ -928,7 +928,7 @@ server.listen({ port: 8080, host:'0.0.0.0' }, (err, address) => {
     job.start()
     // createTable
     console.log(`Server listening at ${address}`);
-    console.log(process.env.SERVER);
+    console.log(secrets.SERVER);
 });
 }
 main();
