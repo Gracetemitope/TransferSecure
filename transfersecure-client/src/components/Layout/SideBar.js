@@ -21,7 +21,7 @@ function Sidebar() {
             <nav className="space-y-2">
                 <div className="flex items-center">
                     <img src={overviewIcon} />
-                    <Link to="/overviewß" className="block p-2 rounded hover:bg-gray-100">Overview</Link>
+                    <Link to="/" className="block p-2 rounded hover:bg-gray-100">Overview</Link>
                 </div>
                 <div className="flex items-center">
                     <img src={transferIcon} />

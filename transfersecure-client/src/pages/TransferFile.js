@@ -4,6 +4,7 @@ import BreadCrumb from "../components/BreadCrumb";
 import fileIcon from "../assets/File.png"
 import UploadSuccess from "../components/UploadSuccess";
 import {useState} from "react";
+import {useNavigate} from "react-router-dom";
 
 function TransferFile() {
     const [formState, setFormState] = useState({
@@ -12,8 +13,10 @@ function TransferFile() {
         duration: "",
         filename: "",
     })
-    const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8080";
+    const API_URL = process.env.REACT_APP_API_URL;
     const [loading, setLoading] = useState(false);
+    const userId = localStorage.getItem("userId");
+    const navigate = useNavigate();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -24,16 +27,34 @@ function TransferFile() {
             formData.append("email", formState.email);
             formData.append("duration", formState.duration);
             formData.append("filename", formState.filename);
-            const response = await fetch(API_URL + "/file", {
+            const response = await fetch(`${API_URL}/file/${userId}`, {
                 method: "POST",
                 body: formData,
+                credentials: "include"
             });
             const data = await response.json();
             console.log(data);
             if(response.ok) {
-                alert("Successfully uploaded");
+                if (data.malicious === true) {
+                    navigate("/malicious-file");
+                } else {
+                console.log(response);
+                const fileData = data.data[0]
+                navigate("/upload-successful", {
+                    state: {
+                        fileURL: fileData.url,
+                        fileName: fileData.filename,
+                        fileSize: fileData.size,
+                        maliciousState: fileData.malicious,
+                }
+                });
+
             }
 
+        } else {
+                console.error("Upload failed:", data.message);
+                alert("Upload failed: " + (data.message || "Unknown error"));
+            }
         } catch (error) {
             console.log(error);
         } finally {
@@ -56,7 +77,6 @@ function TransferFile() {
                         { label: "Upload file"}
                     ]}
                 />
-                {/*<UploadSuccess />*/}
                 <div className={"bg-white rounded-lg shadow p-6"}>
                     <div className={"grid gird-cols-1 md:grid-cols-2 gap-6"}>
                         <div className={"space-y-4"}>

@@ -22,7 +22,7 @@ function Dashboard() {
                         />
             <div className="space-y-6">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    <FileUpload />
+                    {/*<FileUpload />*/}
                     <StatsCard title="Number of transferred files" value={15} />
                     <TransferStats />
                 </div>
