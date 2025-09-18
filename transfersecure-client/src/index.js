@@ -19,6 +19,7 @@ import UpdateProfile from "./components/Profile/UpdateProfile";
 import Dashboard from "./pages/Dashboard";
 import ProtectedRoute from "./components/ProtectedRoute";
 import {AuthProvider} from "./context/AuthContext";
+import NotFound from "./pages/NotFound";
 
 const root = ReactDOM.createRoot(document.getElementById('root'));
 root.render(
@@ -27,6 +28,7 @@ root.render(
         <Routes>
             <Route path="/" element={< App />} />
             <Route path="/register" element={< Register />} />
+            <Route path="*" element={<NotFound />} />
             <Route path="/login" element={< Login />} />
             <Route path="/test" element={<Test />} />
             <Route path="confirm" element={<ConfirmEmail />} />
