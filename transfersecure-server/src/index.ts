@@ -15,6 +15,7 @@ import {
     updatePassword,
     updateUserAttributes,
 } from 'aws-amplify/auth/cognito';
+import fastifyCron from 'fastify-cron';
 import { CookieStorage, defaultStorage } from 'aws-amplify/utils';
 import { Amplify} from 'aws-amplify';
 import { fetchAuthSession, signIn, signUp } from 'aws-amplify/auth';
@@ -22,20 +23,22 @@ import crypto, { createHash } from 'crypto';
 import cors from '@fastify/cors';
 import 'dotenv/config';
 import multipart, { type MultipartFile } from '@fastify/multipart';
-import { calculateFutureDateTime, generateFileHash } from './fileHash.js';
+import { calculateFutureDateTime, generateFileHash,normalizeDate } from './fileHash.js';
 import axios from 'axios';
 import { S3Client,PutObjectCommand , CreateMultipartUploadCommand,
   UploadPartCommand,
   CompleteMultipartUploadCommand,
   AbortMultipartUploadCommand,
-  GetObjectCommand, } from "@aws-sdk/client-s3";
+  GetObjectCommand,
+  DeleteObjectCommand, } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { DynamoDBClient, QueryCommand  } from "@aws-sdk/client-dynamodb"
-import { PutCommand, DynamoDBDocumentClient, GetCommand } from "@aws-sdk/lib-dynamodb";
+import { DeleteItemCommand, DynamoDBClient, QueryCommand, ScanCommand  } from "@aws-sdk/client-dynamodb"
+import { PutCommand, DynamoDBDocumentClient, GetCommand, type ScanCommandOutput, DeleteCommand } from "@aws-sdk/lib-dynamodb";
 import { unmarshall } from "@aws-sdk/util-dynamodb";
 import { v4 as uuidv4 } from 'uuid';
 import sgMail from '@sendgrid/mail'
 import fs from 'fs'
+import { CronJob } from 'cron';
 import rateLimit from '@fastify/rate-limit';
 import { Upload } from "@aws-sdk/lib-storage";
 import {
@@ -74,6 +77,101 @@ await server.register(cors as any, {
     allowedHeaders: ['Content-Type', 'Authorization'],
     credentials: true,
 });
+
+const job = new CronJob(
+	'0 12 * * *', // cronTime
+	async function () {
+		console.log('You will see this message every second');
+        await updateFile()
+	}, // onTick
+	null, // onComplete
+	true, // start
+	'America/Los_Angeles' // timeZone
+);
+
+async function updateFile(){
+
+
+    try {
+        let lastKey: Record<string, any> | undefined = undefined;
+       
+        
+        do {
+            // Get all data stored in the files dynamodb
+            const command = new ScanCommand({TableName: "Files", ExclusiveStartKey:lastKey})
+            const response: ScanCommandOutput = await docClient.send(command)
+           
+
+
+            // Check if there are any data returne
+            if(response.Items && response.Items.length > 0){
+                for (const value of response.Items){
+               
+                    let deadline
+
+                    // Check if a deadline was set then normalize the time format
+                    if (value.duration?.S){
+                        const normDate = normalizeDate(value.duration?.S)
+                        console.log(normDate)
+                        deadline = normDate
+                    }
+
+                 
+                    const now = new Date();
+                   
+                    // Compare if the deadline date has expired if it is less the current date
+                    if (now > deadline! || !value.duration?.S ){
+                        
+                        for (const file of value.files.L){
+                            
+                            // Get the url 
+                            const url = new URL(file.M.url.S!);
+
+                            // get the pathname from the url
+                            const pathname = url.pathname;
+
+                            // Remove leading "/" and decode (in case of spaces or special chars)
+                            const objectKey = decodeURIComponent(pathname.substring(1));
+
+                            // Delete object in s3
+                            const deleteCommand = new DeleteObjectCommand({
+                            Bucket: "securefile-transfer3c92a-dev",
+                            Key: objectKey,
+                            });
+
+                            await s3Client.send(deleteCommand)
+                            }
+
+                        // Delete the entry in the database
+                        const command  = new DeleteItemCommand({
+                                TableName: "Files",
+                                Key: {
+                                    id: { S: value.id.S! }
+                                }
+                        })
+
+                        await docClient.send(command)
+
+                    }
+                   
+                  
+
+
+                        
+                }
+            }
+            
+            lastKey = response.LastEvaluatedKey;
+        }
+        while(lastKey)
+
+
+        
+    } catch (error) {
+        console.error()
+    }
+}
+
 
 
 
@@ -492,6 +590,7 @@ server.post('/file/:userId', async function (req, reply) {
         const { userId } = req.params as { userId: string };
 
         let email: string | undefined;
+        let sec: number | undefined;
         let duration: string | undefined;
         let fileName: string | undefined;
         const results: { filename: string; url?: string; malicious: boolean; size?: string }[] = [];
@@ -500,102 +599,127 @@ server.post('/file/:userId', async function (req, reply) {
         if (part.type === "field") {
             if (part.fieldname === "email") email = part.value as string;
             if (part.fieldname === "duration") {
-            duration = (await calculateFutureDateTime(parseInt(part.value as string))).toLocaleString();
+                sec= parseInt(part.value as string)
+                duration = (await calculateFutureDateTime(sec)).toLocaleString();
             }
             if (part.fieldname === "filename") fileName = part.value as string;
         }
 
         if (part.type === "file") {
-            // 1️⃣ Save file to temp and calculate SHA-256
+            // Save file to temp and calculate SHA-256
             const tempFile = await tmpName();
             const hash = createHash("sha256");
             let totalBytes = 0;
 
             const writeStream = fs.createWriteStream(tempFile);
-            for await (const chunk of part.file) {
 
+            // wait for each chunk of 
+            for await (const chunk of part.file) {
+            // store pass each chunk to be hashed
             hash.update(chunk);
+
+            // Track the size of the file in bytes
             totalBytes += chunk.length;
+
+            // Write this chunk to the the temporary file
             writeStream.write(chunk);
             }
+
+            //Close the write stream
             writeStream.end();
 
+            //At this point all the chunk has been streaed generate the sha256 hash
             const sha256 = hash.digest("hex");
 
-            // 2️⃣ Check VirusTotal
+            //Check VirusTotal if the hash is malicious
             const vtRes = await axios
             .get(`https://www.virustotal.com/api/v3/files/${sha256}`, {
                 headers: { "x-apikey": process.env.VIRUS_TOTAL as string },
             })
             .catch((err) => err.response);
 
+            // Checking virustotal result
             const isMalicious =
             vtRes?.status !== 404 &&
             vtRes?.data?.attributes?.last_analysis_stats?.malicious > 0;
 
+            // If malicious unlink the tempFile created
             if (isMalicious) {
             results.push({ filename: part.filename, malicious: true });
             fs.unlinkSync(tempFile);
             continue; // skip uploading
             }
 
-            // 3️⃣ Multipart upload to S3
+            //Generate the file key for the s3
             const fileKey = `${Date.now()}-${part.filename}`;
+
+            // Create A multipart upload instace with the file key this is where the part will be uploaded to
             const createCmd = new CreateMultipartUploadCommand({
             Bucket: "securefile-transfer3c92a-dev",
             Key: fileKey,
             });
+
+
             const createRes = await s3Client.send(createCmd);
             const uploadId = createRes.UploadId!;
+
             const uploadParts: { ETag: string; PartNumber: number }[] = [];
+            
+            //This is the part size we are using to limit each part upload
             const partSize = 5 * 1024 * 1024; // 5MB
             let partNumber = 1;
 
+            // Read the the temp file 
             const fileStream = fs.createReadStream(tempFile, { highWaterMark: partSize });
             let buffer: Buffer[] = [];
 
             for await (const chunk of fileStream) {
 
-            buffer.push(chunk as Buffer);
-            const size = Buffer.concat(buffer).length;
-            
-            // Ensuring the size of the part is not more than 5mb
-            if (size >= partSize) {
+                buffer.push(chunk as Buffer);
+                const size = Buffer.concat(buffer).length;
+                
+                // Only upload when the chunk size is more than the limit part size
+                if (size >= partSize) {
+                    const partBuffer = Buffer.concat(buffer);
+                    const uploadPartCmd = new UploadPartCommand({
+                    Bucket: "securefile-transfer3c92a-dev",
+                    Key: fileKey,
+                    UploadId: uploadId,
+                    PartNumber: partNumber,
+                    Body: partBuffer,
+                    });
+
+                    // Upload part to s3 and track with PartNumber and Upload Id
+                    const uploadRes = await s3Client.send(uploadPartCmd);
+
+                    // Store the part tag to an array
+                    uploadParts.push({ ETag: uploadRes.ETag!, PartNumber: partNumber });
+
+                    //update the part number
+                    partNumber++;
+
+                    //Clear the chunk buffer
+                    buffer = [];
+                }
+            }
+
+            // Upload remaining buffer if the chunk are less than 5mb
+            if (buffer.length > 0) {
+                // Only upload when the chunk size is more than the limit part size
                 const partBuffer = Buffer.concat(buffer);
                 const uploadPartCmd = new UploadPartCommand({
-                Bucket: "securefile-transfer3c92a-dev",
-                Key: fileKey,
-                UploadId: uploadId,
-                PartNumber: partNumber,
-                Body: partBuffer,
+                    Bucket: "securefile-transfer3c92a-dev",
+                    Key: fileKey,
+                    UploadId: uploadId,
+                    PartNumber: partNumber,
+                    Body: partBuffer,
                 });
 
-                // Upload part
                 const uploadRes = await s3Client.send(uploadPartCmd);
-
-                // Store the part tag to an array
                 uploadParts.push({ ETag: uploadRes.ETag!, PartNumber: partNumber });
-                partNumber++;
-                buffer = [];
-            }
             }
 
-            // Upload remaining buffer
-            if (buffer.length > 0) {
-            const partBuffer = Buffer.concat(buffer);
-            const uploadPartCmd = new UploadPartCommand({
-                Bucket: "securefile-transfer3c92a-dev",
-                Key: fileKey,
-                UploadId: uploadId,
-                PartNumber: partNumber,
-                Body: partBuffer,
-            });
-
-            const uploadRes = await s3Client.send(uploadPartCmd);
-            uploadParts.push({ ETag: uploadRes.ETag!, PartNumber: partNumber });
-            }
-
-            // Complete upload
+            // Complete upload by geting all the individual parts id  and number and merges the chunk into the original file in s3
             await s3Client.send(
             new CompleteMultipartUploadCommand({
                 Bucket: "securefile-transfer3c92a-dev",
@@ -607,7 +731,8 @@ server.post('/file/:userId', async function (req, reply) {
 
             // Generate download URL
             const command1 = new GetObjectCommand({ Bucket: "securefile-transfer3c92a-dev", Key: fileKey });
-            const downloadUrl = await getSignedUrl(s3Client, command1, { expiresIn: 604800 });
+            const expires = sec! * 86400
+            const downloadUrl = await getSignedUrl(s3Client, command1, { expiresIn: expires});
 
             // Push non malicious file
             results.push({ filename: part.filename, url: downloadUrl, malicious: false, size: (totalBytes / 1024 / 1024).toFixed(2) });
@@ -620,31 +745,109 @@ server.post('/file/:userId', async function (req, reply) {
         // Save metadata to DynamoDB if ther is any none malicious file
         const cleanFiles = results.filter((f) => !f.malicious);
         if (cleanFiles.length > 0) {
-        const dbCommand = new PutCommand({
-            TableName: "Files",
-            Item: {
-            id: uuidv4(),
-            user_id: userId,
-            file_name: fileName,
-            files: cleanFiles,
-            created_at: new Date().toLocaleString(),
-            duration,
-            email,
-            },
-        });
-        await docClient.send(dbCommand).then(()=>{
-            sgMail.setApiKey(process.env.SENDGRID_API_KEY!)
 
+            const dbCommand = new PutCommand({
+                TableName: "Files",
+                Item: {
+                id: uuidv4(),
+                user_id: userId,
+                file_name: fileName,
+                files: cleanFiles,
+                created_at: new Date().toLocaleString(),
+                duration,
+                email,
+                },
+            });
 
+            await docClient.send(dbCommand).then(()=>{
+                // Send email to the reciever
+                sgMail.setApiKey(process.env.SENDGRID_API_KEY!)
+                const encodedUrl = encodeURIComponent(cleanFiles[0].url!);
+                const finalUrl = `https://main.dw0t9e0p5k4fj.amplifyapp.com/download-file?download=${encodedUrl}`
+                const emailContent =`
+                    <!DOCTYPE html>
+            <html lang="en">
+            <head>
+                <meta charset="UTF-8">
+                <title>File Received Notification</title>
+                <style>
+                body {
+                    font-family: Arial, sans-serif;
+                    background-color: #f6f6f6;
+                    margin: 0;
+                    padding: 0;
+                }
+                .container {
+                    max-width: 600px;
+                    margin: 40px auto;
+                    background-color: #ffffff;
+                    border-radius: 8px;
+                    overflow: hidden;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                }
+                .header {
+                    background-color: #4CAF50;
+                    color: white;
+                    padding: 20px;
+                    text-align: center;
+                    font-size: 20px;
+                }
+                .content {
+                    padding: 30px 20px;
+                    color: #333333;
+                    line-height: 1.5;
+                }
+                .content h2 {
+                    color: #4CAF50;
+                }
+                .file-link {
+                    display: inline-block;
+                    margin-top: 20px;
+                    padding: 12px 20px;
+                    background-color: #4CAF50;
+                    color: white;
+                    text-decoration: none;
+                    border-radius: 5px;
+                }
+                .footer {
+                    background-color: #f0f0f0;
+                    padding: 20px;
+                    text-align: center;
+                    font-size: 12px;
+                    color: #888888;
+                }
+                @media (max-width: 600px) {
+                    .container {
+                    margin: 20px;
+                    }
+                }
+                </style>
+            </head>
+            <body>
+                <div class="container">
+                <div class="header">File Received</div>
+                <div class="content">
+                    <h2>Hello  </h2>
+                    <p>You have successfully received a new file:</p>
+                    <p><strong>${fileName}</strong></p>
+                    <p>Click the button below to download your file:</p>
+                    <a href="${finalUrl}" class="file-link">Download File</a>
+                    <p>If you did not expect this file, please ignore this email.</p>
+                </div>
+                <div class="footer">
+                    &copy; 2025 Your Company. All rights reserved.
+                </div>
+                </div>
+            </body>
+            </html>            
+                `
+           
             const msg = {
             to: email, // Change to your recipient
             from: process.env.SENDER_EMAIL!, // Change to your verified sender
-            subject: 'File shared',
-            text: `A file has been shared with you: ${cleanFiles[0].url}`,
-            html: `<strong>A file has been shared with you \n 
-            
-            File link \n
-            ${cleanFiles[0].url}</strong>`,
+            subject: 'File shared via TransferSecure',
+            text: emailContent,
+            html:  emailContent,
             }
             sgMail
             .send(msg)
@@ -746,6 +949,7 @@ server.listen({ port: 8080, host:'0.0.0.0' }, (err, address) => {
         console.error(err);
         process.exit(1);
     }
+    job.start()
     // createTable
     console.log(`Server listening at ${address}`);
     console.log(process.env.SERVER);

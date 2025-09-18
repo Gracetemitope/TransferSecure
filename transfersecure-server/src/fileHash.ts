@@ -21,3 +21,25 @@ export async function calculateFutureDateTime(numberOfDays: number): Promise<Dat
   now.setDate(now.getDate() + numberOfDays); // Add the specified number of days
   return now; // Return the new Date object
 }
+
+import { DateTime } from "luxon";
+
+export function normalizeDate(input: string) {
+
+  try {
+    let dt;
+
+    // Try MM/DD/YYYY
+    dt = DateTime.fromFormat(input, "M/d/yyyy, h:mm:ss a", { zone: "utc" });
+    if (dt.isValid) return dt.toJSDate();
+
+    // Try DD/MM/YYYY
+    dt = DateTime.fromFormat(input, "d/M/yyyy, h:mm:ss a", { zone: "utc" });
+    if (dt.isValid) return dt.toJSDate();
+    
+  } catch (error) {
+    console.error(error)
+  }
+  
+
+}
