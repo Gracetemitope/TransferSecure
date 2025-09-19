@@ -49,6 +49,8 @@ import {
 // import { getVirusTotalApiKey } from './awsSecrets.js';
 // import { PassThrough } from 'stream';
 import { getSecrets } from './helper.js';
+import { CognitoIdentityProviderClient, GetUserCommand, InitiateAuthCommand } from "@aws-sdk/client-cognito-identity-provider";
+const cognitoClient = new CognitoIdentityProviderClient({ region: "us-east-1" });
 
 // ssl certificate
 // const options = {
@@ -349,68 +351,122 @@ async function updateFile(){
         }
     });
 
-    server.post('/login', async (request, reply) => {
-        const { email, password, newPassword } = request.body as {
+    // server.post('/login', async (request, reply) => {
+    //     const { email, password, newPassword } = request.body as {
+    //         email: string;
+    //         password: string;
+    //         newPassword?: string;
+    //     };
+
+    //     try {
+    //         const result = await signIn({
+    //             username: email,
+    //             password: password,
+    //             options: {
+    //                 authFlowType: 'USER_PASSWORD_AUTH',
+    //             },
+    //         });
+
+    //         if (result.nextStep.signInStep === 'CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED') {
+    //             if (!newPassword) {
+    //                 return reply.code(400).send({
+    //                     error: 'NEW_PASSWORD_REQUIRED',
+    //                     message: 'User must set a new password.',
+    //                 });
+    //             }
+
+    //             const confirmed = await confirmSignIn({
+    //                 challengeResponse: newPassword,
+    //             });
+
+    //             if (confirmed.isSignedIn) {
+    //                 const { username, userId } = await getCurrentUser();
+    //                 const session = await fetchAuthSession();
+    //                 const attributes = await fetchUserAttributes();
+
+    //                 const tokens = {
+    //                     accessToken: session.tokens?.accessToken,
+    //                     idToken: session.tokens?.idToken,
+    //                     userName: username,
+    //                     userId: userId,
+    //                 };
+
+    //                 return reply.code(200).send({
+    //                     success: true,
+    //                     result: {
+    //                         ...tokens,
+    //                         firstName: attributes.given_name,
+    //                         lastName: attributes.family_name,
+    //                         zoneinfo: attributes.zoneinfo,
+    //                         email: attributes.email,
+    //                     },
+    //                 });
+    //             }
+    //         }
+
+    //         if (result.isSignedIn) {
+    //             const { username, userId } = await getCurrentUser();
+    //             const session = await fetchAuthSession();
+
+    //             const tokens = {
+    //                 accessToken: session.tokens?.accessToken,
+    //                 idToken: session.tokens?.idToken,
+    //                 userName: username,
+    //                 userId: userId,
+    //             };
+
+    //             return reply.code(200).send({
+    //                 success: true,
+    //                 result: tokens,
+    //             });
+    //         }
+
+    //         return reply.code(400).send({
+    //             error: 'CHALLENGE_REQUIRED',
+    //             message: result.nextStep.signInStep,
+    //         });
+    //     } catch (err) {
+    //         reply.code(401).send({ error: (err as Error).message, success: false });
+    //     }
+    // });
+
+    server.post("/login", async (request, reply) => {
+        const { email, password } = request.body as {
             email: string;
             password: string;
-            newPassword?: string;
         };
 
         try {
-            const result = await signIn({
-                username: email,
-                password: password,
-                options: {
-                    authFlowType: 'USER_PASSWORD_AUTH',
-                },
+            const command = new InitiateAuthCommand({
+            AuthFlow: "USER_PASSWORD_AUTH",
+            ClientId: secrets.CLIENT_ID!,
+            AuthParameters: {
+                USERNAME: email,
+                PASSWORD: password,
+            },
             });
 
-            if (result.nextStep.signInStep === 'CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED') {
-                if (!newPassword) {
-                    return reply.code(400).send({
-                        error: 'NEW_PASSWORD_REQUIRED',
-                        message: 'User must set a new password.',
-                    });
-                }
+            const response = await cognitoClient.send(command);
 
-                const confirmed = await confirmSignIn({
-                    challengeResponse: newPassword,
+            if (response.AuthenticationResult) {
+                const accessToken = response.AuthenticationResult.AccessToken;
+                const idToken = response.AuthenticationResult.IdToken;
+
+                const userResponse = await cognitoClient.send(
+                    new GetUserCommand({ AccessToken: accessToken! })
+                );
+
+                const attributes: Record<string, string> = {};
+                userResponse.UserAttributes?.forEach(attr => {
+                    if (attr.Name && attr.Value) {
+                    attributes[attr.Name] = attr.Value;
+                    }
                 });
-
-                if (confirmed.isSignedIn) {
-                    const { username, userId } = await getCurrentUser();
-                    const session = await fetchAuthSession();
-                    const attributes = await fetchUserAttributes();
-
-                    const tokens = {
-                        accessToken: session.tokens?.accessToken,
-                        idToken: session.tokens?.idToken,
-                        userName: username,
-                        userId: userId,
-                    };
-
-                    return reply.code(200).send({
-                        success: true,
-                        result: {
-                            ...tokens,
-                            firstName: attributes.given_name,
-                            lastName: attributes.family_name,
-                            zoneinfo: attributes.zoneinfo,
-                            email: attributes.email,
-                        },
-                    });
-                }
-            }
-
-            if (result.isSignedIn) {
-                const { username, userId } = await getCurrentUser();
-                const session = await fetchAuthSession();
-
                 const tokens = {
-                    accessToken: session.tokens?.accessToken,
-                    idToken: session.tokens?.idToken,
-                    userName: username,
-                    userId: userId,
+                    accessToken: accessToken,
+                    idToken: idToken,
+                    userName: userResponse.Username,
+                    userId: attributes.sub,
                 };
 
                 return reply.code(200).send({
@@ -419,12 +475,18 @@ async function updateFile(){
                 });
             }
 
+
             return reply.code(400).send({
-                error: 'CHALLENGE_REQUIRED',
-                message: result.nextStep.signInStep,
+            success: false,
+            error: "CHALLENGE_REQUIRED",
+            nextStep: response.ChallengeName,
             });
         } catch (err) {
-            reply.code(401).send({ error: (err as Error).message, success: false });
+            console.error("Login error:", err);
+            return reply.code(401).send({
+            success: false,
+            error: (err as Error).message,
+            });
         }
     });
 
