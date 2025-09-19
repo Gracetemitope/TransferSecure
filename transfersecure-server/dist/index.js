@@ -1,9 +1,10 @@
 import fastify, {} from 'fastify';
 import { tmpName } from "tmp-promise";
 import { autoSignIn, cognitoUserPoolsTokenProvider, confirmResetPassword, confirmSignIn, confirmSignUp, deleteUser, fetchUserAttributes, getCurrentUser, resendSignUpCode, resetPassword, signOut, updatePassword, updateUserAttributes, } from 'aws-amplify/auth/cognito';
+import { CognitoIdentityProviderClient, GetUserCommand, InitiateAuthCommand, ResendConfirmationCodeCommand, ChangePasswordCommand, UpdateUserAttributesCommand, GlobalSignOutCommand, DeleteUserCommand, ForgotPasswordCommand, ConfirmForgotPasswordCommand } from "@aws-sdk/client-cognito-identity-provider";
 import { CookieStorage, defaultStorage } from 'aws-amplify/utils';
 import { Amplify } from 'aws-amplify';
-import { fetchAuthSession, signIn, signUp } from 'aws-amplify/auth';
+import { fetchAuthSession, signUp } from 'aws-amplify/auth';
 import crypto, { createHash } from 'crypto';
 import cors from '@fastify/cors';
 import 'dotenv/config';
