@@ -14,10 +14,20 @@ import {
     updatePassword,
     updateUserAttributes,
 } from 'aws-amplify/auth/cognito';
-import { CognitoIdentityProviderClient, GetUserCommand, InitiateAuthCommand } from "@aws-sdk/client-cognito-identity-provider";
+import { CognitoIdentityProviderClient, 
+    GetUserCommand, 
+    InitiateAuthCommand, 
+    ResendConfirmationCodeCommand,
+  ChangePasswordCommand,
+  UpdateUserAttributesCommand,
+  GlobalSignOutCommand,
+  DeleteUserCommand,
+  ForgotPasswordCommand,
+  ConfirmForgotPasswordCommand
+ } from "@aws-sdk/client-cognito-identity-provider";
 import { CookieStorage, defaultStorage } from 'aws-amplify/utils';
 import { Amplify} from 'aws-amplify';
-import { fetchAuthSession, signIn, signUp } from 'aws-amplify/auth';
+import { fetchAuthSession, signUp } from 'aws-amplify/auth';
 import crypto from 'crypto';
 import cors from '@fastify/cors';
 import 'dotenv/config';
@@ -217,9 +227,15 @@ async function main() {
         console.log(`Resending confirmation for ${email}`);
 
         try {
-            const result = await resendSignUpCode({
-                username: email,
+            // const result = await resendSignUpCode({
+            //     username: email,
+            // });
+            const command = new ResendConfirmationCodeCommand({
+                ClientId: secrets.CLIENT_ID!,
+                Username: email,
             });
+            const result = await cognitoClient.send(command);
+
             reply.code(200).send({
                 success: true,
                 data: result,
@@ -229,86 +245,6 @@ async function main() {
             reply.code(400).send({ error: (err as Error).message, success: false });
         }
     });
-
-    // server.post('/login', async (request, reply) => {
-    //     const { email, password, newPassword } = request.body as {
-    //         email: string;
-    //         password: string;
-    //         newPassword?: string;
-    //     };
-
-    //     try {
-    //         const result = await signIn({
-    //             username: email,
-    //             password: password,
-    //             options: {
-    //                 authFlowType: 'USER_PASSWORD_AUTH',
-    //             },
-    //         });
-
-    //         if (result.nextStep.signInStep === 'CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED') {
-    //             if (!newPassword) {
-    //                 return reply.code(400).send({
-    //                     error: 'NEW_PASSWORD_REQUIRED',
-    //                     message: 'User must set a new password.',
-    //                 });
-    //             }
-
-    //             const confirmed = await confirmSignIn({
-    //                 challengeResponse: newPassword,
-    //             });
-
-    //             if (confirmed.isSignedIn) {
-    //                 const { username, userId } = await getCurrentUser();
-    //                 const session = await fetchAuthSession();
-    //                 const attributes = await fetchUserAttributes();
-
-    //                 const tokens = {
-    //                     accessToken: session.tokens?.accessToken,
-    //                     idToken: session.tokens?.idToken,
-    //                     userName: username,
-    //                     userId: userId,
-    //                 };
-
-    //                 return reply.code(200).send({
-    //                     success: true,
-    //                     result: {
-    //                         ...tokens,
-    //                         firstName: attributes.given_name,
-    //                         lastName: attributes.family_name,
-    //                         zoneinfo: attributes.zoneinfo,
-    //                         email: attributes.email,
-    //                     },
-    //                 });
-    //             }
-    //         }
-
-    //         if (result.isSignedIn) {
-    //             const { username, userId } = await getCurrentUser();
-    //             const session = await fetchAuthSession();
-
-    //             const tokens = {
-    //                 accessToken: session.tokens?.accessToken,
-    //                 idToken: session.tokens?.idToken,
-    //                 userName: username,
-    //                 userId: userId,
-    //             };
-
-    //             return reply.code(200).send({
-    //                 success: true,
-    //                 result: tokens,
-    //             });
-    //         }
-
-    //         return reply.code(400).send({
-    //             error: 'CHALLENGE_REQUIRED',
-    //             message: result.nextStep.signInStep,
-    //         });
-
-    //     } catch (err) {
-    //         reply.code(401).send({ error: (err as Error).message, success: false });
-    //     }
-    // });
 
     server.post("/login", async (request, reply) => {
         const { email, password } = request.body as {
@@ -376,43 +312,64 @@ async function main() {
 
 
     server.put("/change-password", async (request, reply) => {
-    const { oldPassword, newPassword, confirmNewPassword } = request.body as {
-        oldPassword: string;
-        newPassword: string;
-        confirmNewPassword: string;
-    };
+        // const { oldPassword, newPassword, confirmNewPassword } = request.body as {
+        //     oldPassword: string;
+        //     newPassword: string;
+        //     confirmNewPassword: string;
+        // };
+        const authHeader = request.headers["authorization"];
+        const accessToken = authHeader?.split(" ")[1]; 
+        if (!accessToken) {
+            return reply.code(401).send({
+            success: false,
+            error: "Access token is required",
+            });
+        }
 
-    if (!oldPassword || !newPassword || !confirmNewPassword) {
-        return reply.code(400).send({
-        success: false,
-        error: "All fields are required",
-        });
-    }
+        const { oldPassword, newPassword, confirmNewPassword } = request.body as {
+            oldPassword: string;
+            newPassword: string;
+            confirmNewPassword: string;
+        };
 
-    if (newPassword !== confirmNewPassword) {
-        return reply.code(400).send({
-        success: false,
-        error: "New password and confirmation do not match",
-        });
-    }
+        if (!oldPassword || !newPassword || !confirmNewPassword) {
+            return reply.code(400).send({
+            success: false,
+            error: "All fields are required",
+            });
+        }
 
-    try {
-        await updatePassword({
-        oldPassword,
-        newPassword,
-        });
+        if (newPassword !== confirmNewPassword) {
+            return reply.code(400).send({
+            success: false,
+            error: "New password and confirmation do not match",
+            });
+        }
 
-        return reply.code(200).send({
-        success: true,
-        message: "Password updated successfully",
-        });
-    } catch (err) {
-        console.error("Error changing password:", err);
-        return reply.code(400).send({
-        success: false,
-        error: (err as Error).message,
-        });
-    }
+        try {
+            // await updatePassword({
+            // oldPassword,
+            // newPassword,
+            // });
+
+            const command = new ChangePasswordCommand({
+                PreviousPassword: oldPassword,
+                ProposedPassword: newPassword,
+                AccessToken: accessToken,
+            });
+            await cognitoClient.send(command);
+
+            return reply.code(200).send({
+            success: true,
+            message: "Password updated successfully",
+            });
+        } catch (err) {
+            console.error("Error changing password:", err);
+            return reply.code(400).send({
+            success: false,
+            error: (err as Error).message,
+            });
+        }
     });
 
     server.post(
@@ -431,23 +388,62 @@ async function main() {
         },
     },
     async (request, reply) => {
+        // const { firstName, lastName, zoneinfo } = request.body as {
+        // firstName: string;
+        // lastName: string;
+        // zoneinfo: string;
+        // };
+        const authHeader = request.headers["authorization"];
+        const accessToken = authHeader?.split(" ")[1]; 
+        if (!accessToken) {
+            return reply.code(401).send({
+            success: false,
+            error: "Access token is required",
+            });
+        }
+
         const { firstName, lastName, zoneinfo } = request.body as {
-        firstName: string;
-        lastName: string;
-        zoneinfo: string;
+            firstName: string;
+            lastName: string;
+            zoneinfo: string;
         };
 
         try {
-        const user = await getCurrentUser();
-            const attributes = await fetchUserAttributes();
+        // const user = await getCurrentUser();
+        // const attributes = await fetchUserAttributes();
 
-        await updateUserAttributes({
-            userAttributes: {
-            given_name: firstName,
-            family_name: lastName,
-            zoneinfo: zoneinfo,
-            },
+        // await updateUserAttributes({
+        //     userAttributes: {
+        //     given_name: firstName,
+        //     family_name: lastName,
+        //     zoneinfo: zoneinfo,
+        //     },
+        // });
+
+        const getUserCommand = new GetUserCommand({
+            AccessToken: accessToken,
         });
+        const userResponse = await cognitoClient.send(getUserCommand);  
+        const attributes: Record<string, string> = {};
+        userResponse.UserAttributes?.forEach(attr => {
+            if (attr.Name && attr.Value) {
+            attributes[attr.Name] = attr.Value;
+            }
+        });
+        const user = {
+            userId: attributes.sub!,
+            username: userResponse.Username!,
+            email: attributes.email!,
+        };
+        const updateAttributesCommand = new UpdateUserAttributesCommand({
+            UserAttributes: [
+            { Name: "given_name", Value: firstName },
+            { Name: "family_name", Value: lastName },
+            { Name: "zoneinfo", Value: zoneinfo },
+            ],
+            AccessToken: accessToken,
+        });
+        await cognitoClient.send(updateAttributesCommand);  
 
         reply.code(200).send({
             success: true,
@@ -474,17 +470,51 @@ async function main() {
 
 
     server.post('/sign-out', async (request, reply) => {
-        await signOut({ global: true });
-        reply.code(200).send({ success: true });
+        // await signOut({ global: true });
+        try {
+            const authHeader = request.headers["authorization"];
+            const accessToken = authHeader?.split(" ")[1]; 
+            if (!accessToken) {
+                return reply.code(401).send({
+                success: false,
+                error: "Access token is required",
+                });
+            }
+            const command = new GlobalSignOutCommand({
+                AccessToken: accessToken,
+            });
+            await cognitoClient.send(command);
+            reply.code(200).send({ success: true });
+        } catch (error) {
+            reply.code(500).send({ error: (error as Error).message, success: false });
+        }
+        
     });
 
     server.post('/refresh-token', async (request, reply) => {
         try {
-            const result = await fetchAuthSession({ forceRefresh: true });
+            // const result = await fetchAuthSession({ forceRefresh: true });
+            const { refreshToken } = request.body as { refreshToken: string };
+            if (!refreshToken) {
+                return reply.code(400).send({ success: false, error: 'refreshToken is required' });
+            }
+            const result = await cognitoClient.send(
+                new InitiateAuthCommand({
+                    AuthFlow: "REFRESH_TOKEN_AUTH",
+                    ClientId: secrets.CLIENT_ID,
+                    AuthParameters: {
+                    REFRESH_TOKEN: refreshToken
+                    }
+                })
+            );
 
             reply.code(200).send({
                 success: true,
-                data: result,
+                data: {
+                    accessToken: result.AuthenticationResult?.AccessToken,
+                    idToken: result.AuthenticationResult?.IdToken,
+                    expiresIn: result.AuthenticationResult?.ExpiresIn
+                },
             });
         } catch (err) {
             reply.code(401).send({ error: (err as Error).message, success: false });
@@ -492,11 +522,64 @@ async function main() {
     });
 
     server.delete('/delete-account', async (request, reply) => {
+        const authHeader = request.headers["authorization"];
+        const accessToken = authHeader?.split(" ")[1]; 
+        if (!accessToken) {
+            return reply.code(401).send({
+            success: false,
+            error: "Access token is required",
+            });
+        }
         try {
-            await deleteUser();
+            await cognitoClient.send(
+            new DeleteUserCommand({
+                AccessToken: accessToken 
+            })
+            );
             reply.code(200).send({ success: true });
         } catch (err) {
-            reply.code(500).send({ error: (err as Error).message, success: false });
+            reply.code(400).send({ success: false, error: (err as Error).message });
+        }
+    });
+
+    server.post('/forgot-password', async (request, reply) => {
+        const { email, confirmationCode, newPassword } = request.body as {
+            email: string;
+            confirmationCode?: string;
+            newPassword?: string;
+        };
+
+        try {
+            if (!confirmationCode) {
+                const output = await resetPassword({ username: email });
+                const { nextStep } = output;
+
+                if (nextStep.resetPasswordStep === 'CONFIRM_RESET_PASSWORD_WITH_CODE') {
+                    return reply.code(200).send({
+                        success: true,
+                        step: 'CODE_SENT',
+                        delivery: nextStep.codeDeliveryDetails,
+                    });
+                }
+            } else {
+                if (!newPassword) {
+                    return reply.code(400).send({ success: false, error: 'newPassword is required' });
+                }
+
+                await confirmResetPassword({
+                    username: email,
+                    confirmationCode: confirmationCode,
+                    newPassword: newPassword,
+                });
+
+                return reply.code(200).send({
+                    success: true,
+                    step: 'DONE',
+                    message: 'Password reset successfully',
+                });
+            }
+        } catch (err) {
+            return reply.code(500).send({ success: false, error: (err as Error).message });
         }
     });
 
@@ -669,47 +752,6 @@ async function main() {
         }
         
     })
-
-    server.post('/forgot-password', async (request, reply) => {
-        const { email, confirmationCode, newPassword } = request.body as {
-            email: string;
-            confirmationCode?: string;
-            newPassword?: string;
-        };
-
-        try {
-            if (!confirmationCode) {
-                const output = await resetPassword({ username: email });
-                const { nextStep } = output;
-
-                if (nextStep.resetPasswordStep === 'CONFIRM_RESET_PASSWORD_WITH_CODE') {
-                    return reply.code(200).send({
-                        success: true,
-                        step: 'CODE_SENT',
-                        delivery: nextStep.codeDeliveryDetails,
-                    });
-                }
-            } else {
-                if (!newPassword) {
-                    return reply.code(400).send({ success: false, error: 'newPassword is required' });
-                }
-
-                await confirmResetPassword({
-                    username: email,
-                    confirmationCode: confirmationCode,
-                    newPassword: newPassword,
-                });
-
-                return reply.code(200).send({
-                    success: true,
-                    step: 'DONE',
-                    message: 'Password reset successfully',
-                });
-            }
-        } catch (err) {
-            return reply.code(500).send({ success: false, error: (err as Error).message });
-        }
-    });
 
     server.listen({ port: 8080, host:'0.0.0.0' }, (err, address) => {
         if (err) {
