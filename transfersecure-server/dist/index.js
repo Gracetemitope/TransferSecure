@@ -351,8 +351,12 @@ server.post("/login", async (request, reply) => {
             const tokens = {
                 accessToken: accessToken,
                 idToken: idToken,
-                userName: userResponse.Username,
                 userId: attributes.sub,
+                userName: userResponse.Username,
+                email: attributes.email,
+                firstName: attributes.given_name,
+                lastName: attributes.family_name,
+                zoneinfo: attributes.zoneinfo,
             };
             return reply.code(200).send({
                 success: true,
