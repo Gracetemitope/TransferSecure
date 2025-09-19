@@ -49,7 +49,11 @@ const s3Client = new S3Client({
     },
 });
 const dbclient = new DynamoDBClient({ region: "us-east-1" });
-const docClient = DynamoDBDocumentClient.from(dbclient);
+const docClient = DynamoDBDocumentClient.from(dbclient, {
+    marshallOptions: {
+        removeUndefinedValues: true, // ✅ auto-remove undefined
+    },
+});
 const server = fastify();
 await server.register(cors, {
     origin: ['http://localhost:3000', "https://main.dw0t9e0p5k4fj.amplifyapp.com"],
@@ -508,6 +512,7 @@ server.post('/file/:userId', async function (req, reply) {
             }
             if (part.type === "file") {
                 // Save file to temp and calculate SHA-256
+                console.log(email);
                 const tempFile = await tmpName();
                 const hash = createHash("sha256");
                 let totalBytes = 0;
@@ -536,7 +541,10 @@ server.post('/file/:userId', async function (req, reply) {
                     vtRes?.data?.attributes?.last_analysis_stats?.malicious > 0;
                 // If malicious unlink the tempFile created
                 if (isMalicious) {
-                    results.push({ filename: part.filename, malicious: true });
+                    results.push({
+                        filename: part.filename, malicious: true,
+                        email: email
+                    });
                     fs.unlinkSync(tempFile);
                     continue; // skip uploading
                 }
@@ -605,7 +613,9 @@ server.post('/file/:userId', async function (req, reply) {
                 const expires = sec * 86400;
                 const downloadUrl = await getSignedUrl(s3Client, command1, { expiresIn: expires });
                 // Push non malicious file
-                results.push({ filename: part.filename, url: downloadUrl, malicious: false, size: (totalBytes / 1024 / 1024).toFixed(2) });
+                console.log(email);
+                results.push({ filename: part.filename, url: downloadUrl, malicious: false, email: email, size: (totalBytes / 1024 / 1024).toFixed(2) });
+                console.log(results);
                 // Remove temp file
                 fs.unlinkSync(tempFile);
             }
@@ -621,8 +631,8 @@ server.post('/file/:userId', async function (req, reply) {
                     file_name: fileName,
                     files: cleanFiles,
                     created_at: new Date().toLocaleString(),
-                    duration,
-                    email,
+                    duration: duration,
+                    email: email,
                 },
             });
             await docClient.send(dbCommand).then(() => {
@@ -695,7 +705,7 @@ server.post('/file/:userId', async function (req, reply) {
                 <div class="content">
                     <h2>Hello  </h2>
                     <p>You have successfully received a new file:</p>
-                    <p><strong>${fileName}</strong></p>
+                    <p><strong>File name: ${fileName}</strong></p>
                     <p>Click the button below to download your file:</p>
                     <a href="${finalUrl}" class="file-link">Download File</a>
                     <p>If you did not expect this file, please ignore this email.</p>

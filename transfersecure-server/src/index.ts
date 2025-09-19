@@ -76,7 +76,11 @@ const cognitoClient = new CognitoIdentityProviderClient({ region: "us-east-1" })
 
     const dbclient = new DynamoDBClient({region: "us-east-1"});
 
-    const docClient = DynamoDBDocumentClient.from(dbclient)
+    const docClient = DynamoDBDocumentClient.from(dbclient,{
+          marshallOptions: {
+            removeUndefinedValues: true, // ✅ auto-remove undefined
+        },
+    })
 
     const server = fastify();
 
@@ -633,14 +637,14 @@ async function updateFile(){
         // ------------------------------
             // 1️⃣ Parse multipart form data
         // ------------------------------
-            const parts = req.parts();
+        const parts = req.parts();
         const { userId } = req.params as { userId: string };
 
         let email: string | undefined;
         let sec: number | undefined;
         let duration: string | undefined;
         let fileName: string | undefined;
-        const results: { filename: string; url?: string; malicious: boolean; size?: string }[] = [];
+        const results: { filename: string; url?: string; malicious: boolean; size?: string , email:string}[] = [];
 
         for await (const part of parts) {
         if (part.type === "field") {
@@ -654,6 +658,8 @@ async function updateFile(){
 
         if (part.type === "file") {
             // Save file to temp and calculate SHA-256
+
+            
             const tempFile = await tmpName();
             const hash = createHash("sha256");
             let totalBytes = 0;
@@ -692,7 +698,10 @@ async function updateFile(){
 
             // If malicious unlink the tempFile created
             if (isMalicious) {
-            results.push({ filename: part.filename, malicious: true });
+            results.push({
+                filename: part.filename, malicious: true,
+                email: email!
+            });
             fs.unlinkSync(tempFile);
             continue; // skip uploading
             }
@@ -782,7 +791,9 @@ async function updateFile(){
             const downloadUrl = await getSignedUrl(s3Client, command1, { expiresIn: expires});
 
             // Push non malicious file
-            results.push({ filename: part.filename, url: downloadUrl, malicious: false, size: (totalBytes / 1024 / 1024).toFixed(2) });
+            
+            results.push({ filename: part.filename, url: downloadUrl, malicious: false, email:email!, size: (totalBytes / 1024 / 1024).toFixed(2) });
+            
 
             // Remove temp file
             fs.unlinkSync(tempFile);
@@ -801,8 +812,8 @@ async function updateFile(){
                 file_name: fileName,
                 files: cleanFiles,
                 created_at: new Date().toLocaleString(),
-                duration,
-                email,
+                duration: duration,
+                email:email!,
                 },
             });
 
@@ -876,7 +887,7 @@ async function updateFile(){
                 <div class="content">
                     <h2>Hello  </h2>
                     <p>You have successfully received a new file:</p>
-                    <p><strong>${fileName}</strong></p>
+                    <p><strong>File name: ${fileName}</strong></p>
                     <p>Click the button below to download your file:</p>
                     <a href="${finalUrl}" class="file-link">Download File</a>
                     <p>If you did not expect this file, please ignore this email.</p>
