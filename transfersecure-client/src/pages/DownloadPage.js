@@ -2,6 +2,10 @@ import DownloadFile from "../components/Dashboard/DownloadFile";
 import Logo from "../../src/assets/Logo.png";
 
 function DownloadPage() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const encodedRedirectUrl = urlParams.get('download');
+    const originalUrl = decodeURIComponent(encodedRedirectUrl);
+
     return (
         <div className="min-h-screen flex items-center justify-center bg-gray-100 px-4">
             <div className="w-full max-w-md flex flex-col items-center">

@@ -6,13 +6,17 @@ function DeleteAccount() {
     const [loading, setLoading] = useState(false);
     const API_URL = process.env.REACT_APP_API_URL || "https://34.234.70.16.nip.io/";
     const navigate = useNavigate();
+    const token = localStorage.getItem("authToken");
+
 
     const handleDelete = async () => {
         setLoading(true);
         try {
             const response = await fetch(API_URL + "/delete-account", {
                 method: "DELETE",
-                credentials: "include",
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                },
             });
 
             if (!response.ok) {

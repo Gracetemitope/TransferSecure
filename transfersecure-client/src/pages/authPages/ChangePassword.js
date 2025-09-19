@@ -8,6 +8,8 @@ function ChangePassword() {
     });
     const API_URL = process.env.REACT_APP_API_URL;
     const [loading, setLoading] = useState(false);
+    const token = localStorage.getItem("authToken");
+
 
     const handleChange = (e) => {
         setFormState({ ...formState, [e.target.name]: e.target.value });
@@ -26,6 +28,7 @@ function ChangePassword() {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`,
                 },
                 credentials: "include",
                 body: JSON.stringify({
