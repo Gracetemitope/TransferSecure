@@ -1,7 +1,16 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export default function DownloadFile() {
     const [fileUrl, setFileUrl] = useState("");
+
+    useEffect(() => {
+        const urlParams = new URLSearchParams(window.location.search);
+        const encodedRedirectUrl = urlParams.get("download");
+        if (encodedRedirectUrl) {
+            const originalUrl = decodeURIComponent(encodedRedirectUrl);
+            setFileUrl(originalUrl);
+        }
+    }, []);
 
     const handleDownload = () => {
         if (!fileUrl) return;
@@ -19,14 +28,14 @@ export default function DownloadFile() {
         <div className="bg-white border rounded-lg p-6 flex items-center space-x-2">
             <input
                 type="text"
-                placeholder="Enter or paste link here"
                 value={fileUrl}
-                onChange={(e) => setFileUrl(e.target.value)}
-                className="flex-1 border rounded px-3 py-2 focus:outline-none"
+                readOnly
+                onPaste={(e) => e.preventDefault()} // block pasting
+                className="flex-1 border rounded px-3 py-2 bg-gray-100 cursor-not-allowed text-gray-700"
             />
             <button
                 onClick={handleDownload}
-                className="bg-indigo-600 text-white px-4 py-2 rounded-lg"
+                className="bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700"
             >
                 Download
             </button>
