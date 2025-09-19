@@ -7,8 +7,6 @@ function ChangePassword() {
         confirmPassword: "",
     });
     const API_URL = process.env.REACT_APP_API_URL;
-
-
     const [loading, setLoading] = useState(false);
 
     const handleChange = (e) => {
@@ -35,23 +33,26 @@ function ChangePassword() {
                     newPassword: formState.newPassword,
                     confirmNewPassword: formState.confirmPassword,
                 }),
-            })
-            console.log("Submitting:", formState);
-            alert("Password changed successfully");
-            setFormState({ currentPassword: "", newPassword: "", confirmPassword: "" });
+            });
+
+            if (response.ok) {
+                alert("Password changed successfully");
+                setFormState({ currentPassword: "", newPassword: "", confirmPassword: "" });
+            } else {
+                alert("Failed to change password. Please check your current password.");
+            }
         } catch (error) {
             console.error(error);
+            alert("An error occurred. Please try again.");
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="w-full mx-auto bg-white p-8 rounded-2xl shadow-md mt-10">
-            <h2 className="text-2xl font-semibold text-gray-800 mb-6">
-                Change Password
-            </h2>
-            <form onSubmit={handleSubmit} className="space-y-5">
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">Change Password</h2>
+            <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                     <label className="block text-gray-600 mb-2">Current Password</label>
                     <input

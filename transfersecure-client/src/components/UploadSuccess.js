@@ -6,7 +6,7 @@ import Navbar from "./Layout/NavBar";
 import BreadCrumb from "./BreadCrumb";
 function UploadSuccess() {
     const { state } = useLocation()
-    const { fileURL, fileName, fileSize, maliciousState } = state || {};
+    const { fileURL, fileName, fileSize, maliciousState, email } = state || {};
     const [copied, setCopied] = useState(false);
 
     const handleCopy = () => {
@@ -54,7 +54,7 @@ function UploadSuccess() {
                     </div>
                     <div className="flex justify-between">
                         <span className="text-gray-500">Sent to</span>
-                        <span>account@email.com</span>
+                        <span>{email}</span>
                     </div>
                     <div className="flex justify-between">
                         <span className="text-gray-500">No. of files</span>

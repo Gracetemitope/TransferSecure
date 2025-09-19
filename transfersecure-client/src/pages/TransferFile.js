@@ -46,6 +46,7 @@ function TransferFile() {
                         fileName: fileData.filename,
                         fileSize: fileData.size,
                         maliciousState: fileData.malicious,
+                        email: fileData.email,
                 }
                 });
 
