@@ -58,9 +58,12 @@ import { getSecrets } from './helper.js';
 //   }
 // };
 
-async function main() {
+// async function main() {
     const secrets = await getSecrets();
-
+    // console.log(secrets)
+    // const secrets = async ( ) => {
+    //    return await getSecrets()
+    // };
     const s3Client = new S3Client({
     region: "us-east-1",
     credentials: {
@@ -925,10 +928,11 @@ server.listen({ port: 8080, host:'0.0.0.0' }, (err, address) => {
         console.error(err);
         process.exit(1);
     }
+    
     job.start()
     // createTable
     console.log(`Server listening at ${address}`);
     console.log(secrets.SERVER);
 });
-}
-main();
+// }
+// main();
