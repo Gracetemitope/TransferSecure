@@ -377,7 +377,7 @@ async function updateFile(){
         };
 
         try {
-            const command = new InitiateAuthCommand({
+             const command = new InitiateAuthCommand({
             AuthFlow: "USER_PASSWORD_AUTH",
             ClientId: secrets.CLIENT_ID!,
             AuthParameters: {
@@ -412,33 +412,6 @@ async function updateFile(){
                     firstName: attributes.given_name,
                     lastName: attributes.family_name,
                     zoneinfo: attributes.zoneinfo,
-            const response = await cognitoClient.send(command);
-
-            if (response.AuthenticationResult) {
-                const accessToken = response.AuthenticationResult.AccessToken;
-                const idToken = response.AuthenticationResult.IdToken;
-
-                const userResponse = await cognitoClient.send(
-                    new GetUserCommand({ AccessToken: accessToken! })
-                );
-
-                const attributes: Record<string, string> = {};
-                userResponse.UserAttributes?.forEach(attr => {
-                    if (attr.Name && attr.Value) {
-                    attributes[attr.Name] = attr.Value;
-                    }
-                });
-                const tokens = {
-                    
-                    accessToken: accessToken,
-                    idToken: idToken,
-                    userId: attributes.sub,
-                    userName: userResponse.Username,
-                    email: attributes.email,
-                    firstName: attributes.given_name,
-                    lastName: attributes.family_name,
-                    zoneinfo: attributes.zoneinfo,
-              
                 };
 
                 return reply.code(200).send({
@@ -447,11 +420,7 @@ async function updateFile(){
                 });
             }
 
-
             return reply.code(400).send({
-            success: false,
-            error: "CHALLENGE_REQUIRED",
-            nextStep: response.ChallengeName,
             success: false,
             error: "CHALLENGE_REQUIRED",
             nextStep: response.ChallengeName,

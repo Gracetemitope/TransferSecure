@@ -27,8 +27,6 @@ import { SecretsManagerClient, GetSecretValueCommand, } from "@aws-sdk/client-se
 // import { getVirusTotalApiKey } from './awsSecrets.js';
 // import { PassThrough } from 'stream';
 import { getSecrets } from './helper.js';
-import { CognitoIdentityProviderClient, GetUserCommand, InitiateAuthCommand } from "@aws-sdk/client-cognito-identity-provider";
-const cognitoClient = new CognitoIdentityProviderClient({ region: "us-east-1" });
 // ssl certificate
 // const options = {
 //   https: {
@@ -50,6 +48,7 @@ const s3Client = new S3Client({
     },
 });
 const dbclient = new DynamoDBClient({ region: "us-east-1" });
+const cognitoClient = new CognitoIdentityProviderClient({ region: "us-east-1" });
 const docClient = DynamoDBDocumentClient.from(dbclient, {
     marshallOptions: {
         removeUndefinedValues: true, // ✅ auto-remove undefined
@@ -250,9 +249,14 @@ server.post('/resend-confirmation', async (request, reply) => {
     const { email } = request.body;
     console.log(`Resending confirmation for ${email}`);
     try {
-        const result = await resendSignUpCode({
-            username: email,
+        // const result = await resendSignUpCode({
+        //     username: email,
+        // });
+        const command = new ResendConfirmationCodeCommand({
+            ClientId: secrets.CLIENT_ID,
+            Username: email,
         });
+        const result = await cognitoClient.send(command);
         reply.code(200).send({
             success: true,
             data: result,
@@ -263,74 +267,6 @@ server.post('/resend-confirmation', async (request, reply) => {
         reply.code(400).send({ error: err.message, success: false });
     }
 });
-// server.post('/login', async (request, reply) => {
-//     const { email, password, newPassword } = request.body as {
-//         email: string;
-//         password: string;
-//         newPassword?: string;
-//     };
-//     try {
-//         const result = await signIn({
-//             username: email,
-//             password: password,
-//             options: {
-//                 authFlowType: 'USER_PASSWORD_AUTH',
-//             },
-//         });
-//         if (result.nextStep.signInStep === 'CONFIRM_SIGN_IN_WITH_NEW_PASSWORD_REQUIRED') {
-//             if (!newPassword) {
-//                 return reply.code(400).send({
-//                     error: 'NEW_PASSWORD_REQUIRED',
-//                     message: 'User must set a new password.',
-//                 });
-//             }
-//             const confirmed = await confirmSignIn({
-//                 challengeResponse: newPassword,
-//             });
-//             if (confirmed.isSignedIn) {
-//                 const { username, userId } = await getCurrentUser();
-//                 const session = await fetchAuthSession();
-//                 const attributes = await fetchUserAttributes();
-//                 const tokens = {
-//                     accessToken: session.tokens?.accessToken,
-//                     idToken: session.tokens?.idToken,
-//                     userName: username,
-//                     userId: userId,
-//                 };
-//                 return reply.code(200).send({
-//                     success: true,
-//                     result: {
-//                         ...tokens,
-//                         firstName: attributes.given_name,
-//                         lastName: attributes.family_name,
-//                         zoneinfo: attributes.zoneinfo,
-//                         email: attributes.email,
-//                     },
-//                 });
-//             }
-//         }
-//         if (result.isSignedIn) {
-//             const { username, userId } = await getCurrentUser();
-//             const session = await fetchAuthSession();
-//             const tokens = {
-//                 accessToken: session.tokens?.accessToken,
-//                 idToken: session.tokens?.idToken,
-//                 userName: username,
-//                 userId: userId,
-//             };
-//             return reply.code(200).send({
-//                 success: true,
-//                 result: tokens,
-//             });
-//         }
-//         return reply.code(400).send({
-//             error: 'CHALLENGE_REQUIRED',
-//             message: result.nextStep.signInStep,
-//         });
-//     } catch (err) {
-//         reply.code(401).send({ error: (err as Error).message, success: false });
-//     }
-// });
 server.post("/login", async (request, reply) => {
     const { email, password } = request.body;
     try {
@@ -346,6 +282,7 @@ server.post("/login", async (request, reply) => {
         if (response.AuthenticationResult) {
             const accessToken = response.AuthenticationResult.AccessToken;
             const idToken = response.AuthenticationResult.IdToken;
+            // Lấy user info
             const userResponse = await cognitoClient.send(new GetUserCommand({ AccessToken: accessToken }));
             const attributes = {};
             userResponse.UserAttributes?.forEach(attr => {
@@ -380,9 +317,27 @@ server.post("/login", async (request, reply) => {
             success: false,
             error: err.message,
         });
+        console.error("Login error:", err);
+        return reply.code(401).send({
+            success: false,
+            error: err.message,
+        });
     }
 });
 server.put("/change-password", async (request, reply) => {
+    // const { oldPassword, newPassword, confirmNewPassword } = request.body as {
+    //     oldPassword: string;
+    //     newPassword: string;
+    //     confirmNewPassword: string;
+    // };
+    const authHeader = request.headers["authorization"];
+    const accessToken = authHeader?.split(" ")[1];
+    if (!accessToken) {
+        return reply.code(401).send({
+            success: false,
+            error: "Access token is required",
+        });
+    }
     const { oldPassword, newPassword, confirmNewPassword } = request.body;
     if (!oldPassword || !newPassword || !confirmNewPassword) {
         return reply.code(400).send({
@@ -397,10 +352,16 @@ server.put("/change-password", async (request, reply) => {
         });
     }
     try {
-        await updatePassword({
-            oldPassword,
-            newPassword,
+        // await updatePassword({
+        // oldPassword,
+        // newPassword,
+        // });
+        const command = new ChangePasswordCommand({
+            PreviousPassword: oldPassword,
+            ProposedPassword: newPassword,
+            AccessToken: accessToken,
         });
+        await cognitoClient.send(command);
         return reply.code(200).send({
             success: true,
             message: "Password updated successfully",
@@ -427,17 +388,54 @@ server.post("/update-profile", {
         },
     },
 }, async (request, reply) => {
+    // const { firstName, lastName, zoneinfo } = request.body as {
+    // firstName: string;
+    // lastName: string;
+    // zoneinfo: string;
+    // };
+    const authHeader = request.headers["authorization"];
+    const accessToken = authHeader?.split(" ")[1];
+    if (!accessToken) {
+        return reply.code(401).send({
+            success: false,
+            error: "Access token is required",
+        });
+    }
     const { firstName, lastName, zoneinfo } = request.body;
     try {
-        const user = await getCurrentUser();
-        const attributes = await fetchUserAttributes();
-        await updateUserAttributes({
-            userAttributes: {
-                given_name: firstName,
-                family_name: lastName,
-                zoneinfo: zoneinfo,
-            },
+        // const user = await getCurrentUser();
+        // const attributes = await fetchUserAttributes();
+        // await updateUserAttributes({
+        //     userAttributes: {
+        //     given_name: firstName,
+        //     family_name: lastName,
+        //     zoneinfo: zoneinfo,
+        //     },
+        // });
+        const getUserCommand = new GetUserCommand({
+            AccessToken: accessToken,
         });
+        const userResponse = await cognitoClient.send(getUserCommand);
+        const attributes = {};
+        userResponse.UserAttributes?.forEach(attr => {
+            if (attr.Name && attr.Value) {
+                attributes[attr.Name] = attr.Value;
+            }
+        });
+        const user = {
+            userId: attributes.sub,
+            username: userResponse.Username,
+            email: attributes.email,
+        };
+        const updateAttributesCommand = new UpdateUserAttributesCommand({
+            UserAttributes: [
+                { Name: "given_name", Value: firstName },
+                { Name: "family_name", Value: lastName },
+                { Name: "zoneinfo", Value: zoneinfo },
+            ],
+            AccessToken: accessToken,
+        });
+        await cognitoClient.send(updateAttributesCommand);
         reply.code(200).send({
             success: true,
             message: "Profile updated successfully",
@@ -460,15 +458,47 @@ server.post("/update-profile", {
     }
 });
 server.post('/sign-out', async (request, reply) => {
-    await signOut({ global: true });
-    reply.code(200).send({ success: true });
+    // await signOut({ global: true });
+    try {
+        const authHeader = request.headers["authorization"];
+        const accessToken = authHeader?.split(" ")[1];
+        if (!accessToken) {
+            return reply.code(401).send({
+                success: false,
+                error: "Access token is required",
+            });
+        }
+        const command = new GlobalSignOutCommand({
+            AccessToken: accessToken,
+        });
+        await cognitoClient.send(command);
+        reply.code(200).send({ success: true });
+    }
+    catch (error) {
+        reply.code(500).send({ error: error.message, success: false });
+    }
 });
 server.post('/refresh-token', async (request, reply) => {
     try {
-        const result = await fetchAuthSession({ forceRefresh: true });
+        // const result = await fetchAuthSession({ forceRefresh: true });
+        const { refreshToken } = request.body;
+        if (!refreshToken) {
+            return reply.code(400).send({ success: false, error: 'refreshToken is required' });
+        }
+        const result = await cognitoClient.send(new InitiateAuthCommand({
+            AuthFlow: "REFRESH_TOKEN_AUTH",
+            ClientId: secrets.CLIENT_ID,
+            AuthParameters: {
+                REFRESH_TOKEN: refreshToken
+            }
+        }));
         reply.code(200).send({
             success: true,
-            data: result,
+            data: {
+                accessToken: result.AuthenticationResult?.AccessToken,
+                idToken: result.AuthenticationResult?.IdToken,
+                expiresIn: result.AuthenticationResult?.ExpiresIn
+            },
         });
     }
     catch (err) {
@@ -476,12 +506,56 @@ server.post('/refresh-token', async (request, reply) => {
     }
 });
 server.delete('/delete-account', async (request, reply) => {
+    const authHeader = request.headers["authorization"];
+    const accessToken = authHeader?.split(" ")[1];
+    if (!accessToken) {
+        return reply.code(401).send({
+            success: false,
+            error: "Access token is required",
+        });
+    }
     try {
-        await deleteUser();
+        await cognitoClient.send(new DeleteUserCommand({
+            AccessToken: accessToken
+        }));
         reply.code(200).send({ success: true });
     }
     catch (err) {
-        reply.code(500).send({ error: err.message, success: false });
+        reply.code(400).send({ success: false, error: err.message });
+    }
+});
+server.post('/forgot-password', async (request, reply) => {
+    const { email, confirmationCode, newPassword } = request.body;
+    try {
+        if (!confirmationCode) {
+            const output = await resetPassword({ username: email });
+            const { nextStep } = output;
+            if (nextStep.resetPasswordStep === 'CONFIRM_RESET_PASSWORD_WITH_CODE') {
+                return reply.code(200).send({
+                    success: true,
+                    step: 'CODE_SENT',
+                    delivery: nextStep.codeDeliveryDetails,
+                });
+            }
+        }
+        else {
+            if (!newPassword) {
+                return reply.code(400).send({ success: false, error: 'newPassword is required' });
+            }
+            await confirmResetPassword({
+                username: email,
+                confirmationCode: confirmationCode,
+                newPassword: newPassword,
+            });
+            return reply.code(200).send({
+                success: true,
+                step: 'DONE',
+                message: 'Password reset successfully',
+            });
+        }
+    }
+    catch (err) {
+        return reply.code(500).send({ success: false, error: err.message });
     }
 });
 // '''
@@ -513,7 +587,6 @@ server.post('/file/:userId', async function (req, reply) {
             }
             if (part.type === "file") {
                 // Save file to temp and calculate SHA-256
-                console.log(email);
                 const tempFile = await tmpName();
                 const hash = createHash("sha256");
                 let totalBytes = 0;
@@ -614,9 +687,7 @@ server.post('/file/:userId', async function (req, reply) {
                 const expires = sec * 86400;
                 const downloadUrl = await getSignedUrl(s3Client, command1, { expiresIn: expires });
                 // Push non malicious file
-                console.log(email);
                 results.push({ filename: part.filename, url: downloadUrl, malicious: false, email: email, size: (totalBytes / 1024 / 1024).toFixed(2) });
-                console.log(results);
                 // Remove temp file
                 fs.unlinkSync(tempFile);
             }
@@ -764,40 +835,6 @@ server.get('/user/file/:userId', async function (req, reply) {
     }
     catch (error) {
         reply.code(500).send({ error: error.message, success: false });
-    }
-});
-server.post('/forgot-password', async (request, reply) => {
-    const { email, confirmationCode, newPassword } = request.body;
-    try {
-        if (!confirmationCode) {
-            const output = await resetPassword({ username: email });
-            const { nextStep } = output;
-            if (nextStep.resetPasswordStep === 'CONFIRM_RESET_PASSWORD_WITH_CODE') {
-                return reply.code(200).send({
-                    success: true,
-                    step: 'CODE_SENT',
-                    delivery: nextStep.codeDeliveryDetails,
-                });
-            }
-        }
-        else {
-            if (!newPassword) {
-                return reply.code(400).send({ success: false, error: 'newPassword is required' });
-            }
-            await confirmResetPassword({
-                username: email,
-                confirmationCode: confirmationCode,
-                newPassword: newPassword,
-            });
-            return reply.code(200).send({
-                success: true,
-                step: 'DONE',
-                message: 'Password reset successfully',
-            });
-        }
-    }
-    catch (err) {
-        return reply.code(500).send({ success: false, error: err.message });
     }
 });
 server.listen({ port: 8080, host: '0.0.0.0' }, (err, address) => {
