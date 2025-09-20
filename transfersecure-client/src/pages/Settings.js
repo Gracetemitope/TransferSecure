@@ -23,7 +23,6 @@ function Settings() {
                     />
 
                     <div className="mx-auto bg-white rounded-xl shadow-md overflow-hidden mt-6">
-                        {/* Tab Navigation */}
                         <div className="flex border-b border-gray-200">
                             <button
                                 onClick={() => setActiveTab("profile")}
@@ -56,8 +55,6 @@ function Settings() {
                                 Delete Account
                             </button>
                         </div>
-
-                        {/* Tab Content */}
                         <div className="p-6">
                             {activeTab === "profile" && <ViewProfile />}
                             {activeTab === "password" && <ChangePassword />}

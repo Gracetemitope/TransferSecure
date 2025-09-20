@@ -19,7 +19,6 @@ function Dashboard() {
                 const data = await response.json();
                 setTotalFiles(data.data ? data.data.length : 0);
             } catch (err) {
-                console.error("Error fetching files count:", err);
             }
         };
 

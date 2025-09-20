@@ -22,7 +22,7 @@ function ProfileMenu({ firstName }) {
     }, []);
 
     const handleProfile = () => {
-        navigate("/profile");
+        navigate("/settings");
         setOpen(false);
     };
 
@@ -33,7 +33,6 @@ function ProfileMenu({ firstName }) {
                 credentials: "include",
             });
         } catch (error) {
-            console.error("Logout failed:", error);
         }  finally {
             logout();
             navigate("/login");

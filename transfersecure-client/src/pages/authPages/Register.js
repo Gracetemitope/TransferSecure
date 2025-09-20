@@ -64,7 +64,6 @@ function Register() {
                 setErrorMessage(message);
             }
         } catch (error) {
-            console.error(error);
             setErrorMessage("Something went wrong. Please try again later.");
         } finally {
             setLoading(false);

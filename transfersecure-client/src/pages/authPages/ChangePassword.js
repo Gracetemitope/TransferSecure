@@ -45,7 +45,6 @@ function ChangePassword() {
                 alert("Failed to change password. Please check your current password.");
             }
         } catch (error) {
-            console.error(error);
             alert("An error occurred. Please try again.");
         } finally {
             setLoading(false);

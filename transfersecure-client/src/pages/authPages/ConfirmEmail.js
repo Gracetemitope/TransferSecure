@@ -7,9 +7,7 @@ function ConfirmEmail({ username, email, onClose }) {
   );
   const navigate = useNavigate();
   const inputsRef = useRef([]);
-  const API_URL =
-    process.env.REACT_APP_API_URL;
-  // || "http://localhost:8080";
+  const API_URL = process.env.REACT_APP_API_URL;
 
   useEffect(() => {
     inputsRef.current[0]?.focus();
@@ -64,7 +62,6 @@ function ConfirmEmail({ username, email, onClose }) {
         }),
       });
       const data = await response.json();
-      console.log(data);
       if (response.ok && data.success) {
         alert("Email confirmed successfully");
         navigate("/");
@@ -72,7 +69,6 @@ function ConfirmEmail({ username, email, onClose }) {
         alert("Something went wrong!");
       }
     } catch (error) {
-      console.error(error);
     }
   };
 
@@ -95,7 +91,6 @@ function ConfirmEmail({ username, email, onClose }) {
                 alert("Failed to resend code. Please try again.");
             }
         } catch (error) {
-            console.error(error);
             alert("An error occurred while resending code.");
         }
     };

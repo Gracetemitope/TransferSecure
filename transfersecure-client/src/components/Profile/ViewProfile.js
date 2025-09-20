@@ -99,7 +99,6 @@ function ViewProfile() {
                 alert(msg);
             }
         } catch (err) {
-            console.error("Error updating profile:", err);
             alert("An error occurred while updating your profile. Please try again.");
         } finally {
             setLoading(false);

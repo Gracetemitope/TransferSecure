@@ -47,7 +47,6 @@ function Login() {
                 setErrorMessage(data.error || data.message || "Unable to sign in. Please try again.");
             }
         } catch (error) {
-            console.error("Login error:", error);
             setErrorMessage("Something went wrong. Please try again later.");
         } finally {
             setLoading(false);

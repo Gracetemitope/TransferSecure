@@ -33,12 +33,10 @@ function TransferFile() {
                 credentials: "include"
             });
             const data = await response.json();
-            console.log(data);
             if(response.ok) {
                 if (data.malicious === true) {
                     navigate("/malicious-file");
                 } else {
-                console.log(response);
                 const fileData = data.data[0]
                 navigate("/upload-successful", {
                     state: {
@@ -53,11 +51,9 @@ function TransferFile() {
             }
 
         } else {
-                console.error("Upload failed:", data.message);
                 alert("Upload failed: " + (data.message || "Unknown error"));
             }
         } catch (error) {
-            console.log(error);
         } finally {
             setLoading(false);
         }
