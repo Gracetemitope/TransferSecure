@@ -15,10 +15,9 @@ export default function DownloadFile() {
     const handleDownload = () => {
         if (!fileUrl) return;
 
-        // Create a hidden link and click it
         const link = document.createElement("a");
         link.href = fileUrl;
-        link.download = ""; // let the browser decide filename
+        link.download = "";
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -29,9 +28,9 @@ export default function DownloadFile() {
             <input
                 type="text"
                 value={fileUrl}
-                readOnly
-                onPaste={(e) => e.preventDefault()} // block pasting
-                className="flex-1 border rounded px-3 py-2 bg-gray-100 cursor-not-allowed text-gray-700"
+                onChange={(e) => setFileUrl(e.target.value)}
+                className="flex-1 border rounded px-3 py-2 bg-white text-gray-700"
+                placeholder="Enter file URL"
             />
             <button
                 onClick={handleDownload}
