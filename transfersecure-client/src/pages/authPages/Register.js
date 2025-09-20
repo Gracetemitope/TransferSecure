@@ -14,7 +14,7 @@ function Register() {
     });
     const [username, setUsername] = useState("");
     const [showConfirm, setShowConfirm] = useState(false);
-    const [showPassword, setShowPassword] = useState(true);
+    const [showPassword, setShowPassword] = useState(false);
     const [errorMessage, setErrorMessage] = useState("");
     const [loading, setLoading] = useState(false);
     const navigate = useNavigate();
