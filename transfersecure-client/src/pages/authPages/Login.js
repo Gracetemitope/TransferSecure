@@ -59,7 +59,9 @@ function Login() {
             <main className="flex-grow flex items-center justify-center">
                 <div className="w-full max-w-md flex flex-col items-center">
                     <div className="flex justify-center">
+                        <Link to="/">
                         <img src={Logo} alt="logo" className="h-10" />
+                        </Link>
                     </div>
                     <h1 className="text-2xl mt-5 font-sans font-bold text-center text-[#353535]">
                         Welcome to Transfer Secure

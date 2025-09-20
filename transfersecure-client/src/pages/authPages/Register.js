@@ -72,7 +72,9 @@ function Register() {
                 <div className={`${showConfirm ? "blur-sm" : ""} w-full`}>
                     <div className="w-full max-w-md p-6">
                         <div className="flex justify-center mb-6">
+                            <Link to="/">
                             <img src={Logo} alt="logo" className="h-10" />
+                            </Link>
                         </div>
                         <h1 className="text-2xl mt-8 text-center font-sans font-bold mb-4">
                             Create a new Account
