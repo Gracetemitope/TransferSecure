@@ -70,11 +70,12 @@ import { getSecrets } from './helper.js';
 //   }
 // };
 
-// const secrets = await getSecrets();
+const secrets = await getSecrets();
     // console.log(secrets)
     // const secrets = async ( ) => {
     //    return await getSecrets()
     // };
+
 const s3Client = new S3Client({
     region: 'us-east-1',
     credentials: {
@@ -972,12 +973,7 @@ server.post('/forgot-password', async (request, reply) => {
         reply.code(500).send({ error: (error as Error).message, success: false });
     }
 });
-        return reply.code(200).send({ success: true, data: results });
-    } catch (error) {
-        reply.code(500).send({ error: (error as Error).message, success: false });
-    }
-});
-
+        
 server.get('/user/file/:userId', async function(req, reply) {
     try {
         // Get user Id as a request parameter
