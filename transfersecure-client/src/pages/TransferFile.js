@@ -33,12 +33,10 @@ function TransferFile() {
                 credentials: "include"
             });
             const data = await response.json();
-            console.log(data);
             if(response.ok) {
                 if (data.malicious === true) {
                     navigate("/malicious-file");
                 } else {
-                console.log(response);
                 const fileData = data.data[0]
                 navigate("/upload-successful", {
                     state: {
@@ -46,18 +44,16 @@ function TransferFile() {
                         fileName: fileData.filename,
                         fileSize: fileData.size,
                         maliciousState: fileData.malicious,
-                        email: fileData.email,
+                        email: formState.email,
                 }
                 });
 
             }
 
         } else {
-                console.error("Upload failed:", data.message);
                 alert("Upload failed: " + (data.message || "Unknown error"));
             }
         } catch (error) {
-            console.log(error);
         } finally {
             setLoading(false);
         }
@@ -108,7 +104,6 @@ function TransferFile() {
                                 <option value="">Select file duration</option>
                                 <option value="1d">1 day</option>
                                 <option value="7d">7 days</option>
-                                <option value="30d">30 days</option>
                             </select>
                         </div>
                         <div className={"flex flex-col items-center justify-center border-2 border-dashed bg-[#F6F5FF] border-[#211A94]" }>

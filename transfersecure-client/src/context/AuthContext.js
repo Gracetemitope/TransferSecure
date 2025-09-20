@@ -5,7 +5,7 @@ const AuthContext = createContext();
 
 export function AuthProvider({ children }) {
     const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(true);  // ✅ add loading
+    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const token = localStorage.getItem("authToken");
@@ -20,11 +20,10 @@ export function AuthProvider({ children }) {
                     localStorage.removeItem("authToken");
                 }
             } catch (err) {
-                console.error("Invalid token:", err);
                 localStorage.removeItem("authToken");
             }
         }
-        setLoading(false); // ✅ only mark finished after check
+        setLoading(false);
     }, []);
 
     const login = (token) => {
@@ -33,7 +32,6 @@ export function AuthProvider({ children }) {
             localStorage.setItem("authToken", token);
             setUser(decoded);
         } catch (err) {
-            console.error("Invalid token during login:", err);
         }
     };
 

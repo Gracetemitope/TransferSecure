@@ -38,11 +38,9 @@ function UpdateProfile() {
                 navigate("/profile");
             } else {
                 alert("Failed to update profile.");
-                console.log(response);
 
             }
         } catch (error) {
-            console.error("Error updating profile:", error);
         }
     };
 
@@ -54,7 +52,7 @@ function UpdateProfile() {
                 <main className={"p-6 flex-1 bg-gray-50"}>
                     <BreadCrumb
                         items={[
-                            { label: "Profile", to: "/profile"},
+                            { label: "Profile", to: "/settings"},
                             { label: "Update Profile"}
                         ]}
                     />

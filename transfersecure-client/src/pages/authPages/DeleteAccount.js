@@ -4,15 +4,19 @@ import { useNavigate } from "react-router-dom";
 function DeleteAccount() {
     const [showConfirm, setShowConfirm] = useState(false);
     const [loading, setLoading] = useState(false);
-    const API_URL = process.env.REACT_APP_API_URL || "https://34.234.70.16.nip.io/";
+    const API_URL = process.env.REACT_APP_API_URL;
     const navigate = useNavigate();
+    const token = localStorage.getItem("authToken");
+
 
     const handleDelete = async () => {
         setLoading(true);
         try {
             const response = await fetch(API_URL + "/delete-account", {
                 method: "DELETE",
-                credentials: "include",
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                },
             });
 
             if (!response.ok) {
@@ -24,7 +28,6 @@ function DeleteAccount() {
             alert("Account deleted successfully");
             navigate("/register");
         } catch (error) {
-            console.error(error);
             alert("An error occurred while deleting your account.");
         } finally {
             setLoading(false);

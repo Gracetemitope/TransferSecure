@@ -17,8 +17,6 @@ function NotFound() {
                         </div>
                     </div>
                 </div>
-
-                {/* Message */}
                 <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-6">
                     Page Not Found
                 </h1>
@@ -26,8 +24,6 @@ function NotFound() {
                 <p className="text-lg text-gray-700 mb-10">
                     Oops! Not sure where you are trying to go but nothing is here.
                 </p>
-
-                {/* Home button */}
                 <Link
                     to="/"
                     className="inline-flex items-center bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-6 rounded-lg transition duration-300 ease-in-out transform hover:-translate-y-1"

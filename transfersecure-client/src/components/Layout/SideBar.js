@@ -10,7 +10,8 @@ function Sidebar() {
         <aside className="w-64 bg-white border-r flex flex-col p-4">
             <div className="flex items-center mb-4">
                 <img src={Logo} />
-                <h1>Transfer Secure</h1>
+                <Link to="/">
+                    <h1>Transfer Secure</h1></Link>
             </div>
             <div className="bg-[#211A94] text-white py-2 px-4 rounded-lg flex items-center justify-center mb-6">
             <Link to={"/transfer"}>
@@ -21,7 +22,7 @@ function Sidebar() {
             <nav className="space-y-2">
                 <div className="flex items-center">
                     <img src={overviewIcon} />
-                    <Link to="/" className="block p-2 rounded hover:bg-gray-100">Overview</Link>
+                    <Link to="/dashboard" className="block p-2 rounded hover:bg-gray-100">Overview</Link>
                 </div>
                 <div className="flex items-center">
                     <img src={transferIcon} />

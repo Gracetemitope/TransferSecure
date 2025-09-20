@@ -1,7 +1,7 @@
-import fastify, { type FastifyRequest } from 'fastify';
+import fastify from 'fastify';
 import { tmpName } from "tmp-promise";
 import {
-    autoSignIn,
+  autoSignIn,
     cognitoUserPoolsTokenProvider,
     confirmResetPassword,
     confirmSignIn,
@@ -15,7 +15,8 @@ import {
     updatePassword,
     updateUserAttributes,
 } from 'aws-amplify/auth/cognito';
-import { CognitoIdentityProviderClient, 
+import {
+   CognitoIdentityProviderClient, 
     GetUserCommand, 
     InitiateAuthCommand, 
     ResendConfirmationCodeCommand,
@@ -25,10 +26,10 @@ import { CognitoIdentityProviderClient,
   DeleteUserCommand,
   ForgotPasswordCommand,
   ConfirmForgotPasswordCommand
- } from "@aws-sdk/client-cognito-identity-provider";
+} from '@aws-sdk/client-cognito-identity-provider';
 
 import { CookieStorage, defaultStorage } from 'aws-amplify/utils';
-import { Amplify} from 'aws-amplify';
+import { Amplify } from 'aws-amplify';
 import { fetchAuthSession, signUp } from 'aws-amplify/auth';
 import crypto, { createHash } from 'crypto';
 import cors from '@fastify/cors';
@@ -36,16 +37,16 @@ import 'dotenv/config';
 import multipart, { type MultipartFile } from '@fastify/multipart';
 import { calculateFutureDateTime, generateFileHash,normalizeDate } from './fileHash.js';
 import axios from 'axios';
-import { S3Client,PutObjectCommand , CreateMultipartUploadCommand,
+import { S3Client, PutObjectCommand,  CreateMultipartUploadCommand,
   UploadPartCommand,
   CompleteMultipartUploadCommand,
   AbortMultipartUploadCommand,
   GetObjectCommand,
-  DeleteObjectCommand, } from "@aws-sdk/client-s3";
-import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
-import { DeleteItemCommand, DynamoDBClient, QueryCommand, ScanCommand  } from "@aws-sdk/client-dynamodb"
-import { PutCommand, DynamoDBDocumentClient, GetCommand, type ScanCommandOutput, DeleteCommand } from "@aws-sdk/lib-dynamodb";
-import { unmarshall } from "@aws-sdk/util-dynamodb";
+  DeleteObjectCommand,} from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
+import { DeleteItemCommand, DynamoDBClient, QueryCommand, ScanCommand } from '@aws-sdk/client-dynamodb';
+import { PutCommand, DynamoDBDocumentClient, GetCommand, type ScanCommandOutput, DeleteCommand } from '@aws-sdk/lib-dynamodb';
+import { unmarshall } from '@aws-sdk/util-dynamodb';
 import { v4 as uuidv4 } from 'uuid';
 import sgMail from '@sendgrid/mail'
 import fs from 'fs'
@@ -69,23 +70,22 @@ import { getSecrets } from './helper.js';
 //   }
 // };
 
-// async function main() {
-    const secrets = await getSecrets();
+// const secrets = await getSecrets();
     // console.log(secrets)
     // const secrets = async ( ) => {
     //    return await getSecrets()
     // };
-    const s3Client = new S3Client({
-    region: "us-east-1",
+const s3Client = new S3Client({
+    region: 'us-east-1',
     credentials: {
         accessKeyId: secrets.AWS_ACCESS_KEY_ID,
         secretAccessKey: secrets.AWS_SECRET_ACCESS_KEY,
     },
-    });
+});
 
-    const dbclient = new DynamoDBClient({region: "us-east-1"});
+const dbclient = new DynamoDBClient({ region: 'us-east-1' });
 
-    const cognitoClient = new CognitoIdentityProviderClient({ region: "us-east-1" });
+const cognitoClient = new CognitoIdentityProviderClient({ region: 'us-east-1' });
 
     const docClient = DynamoDBDocumentClient.from(dbclient,{
           marshallOptions: {
@@ -93,7 +93,7 @@ import { getSecrets } from './helper.js';
         },
     })
 
-    const server = fastify();
+const server = fastify();
 
 await server.register(cors as any, {
     origin: ['http://localhost:3000', "https://main.dw0t9e0p5k4fj.amplifyapp.com"],
@@ -199,335 +199,312 @@ async function updateFile(){
 
 
 
-    await server.register(rateLimit, {
-        global: true, 
-        max: 100, 
-        timeWindow: '1 minute'
-    });
+await server.register(rateLimit, {
+    global: true,
+    max: 100,
+    timeWindow: '1 minute',
+});
 
     await server.register(multipart,{limits: {
         fileSize: 1024 * 1024 * 1024
     }});
 
-    cognitoUserPoolsTokenProvider.setKeyValueStorage(new CookieStorage());
-    cognitoUserPoolsTokenProvider.setKeyValueStorage(defaultStorage);
+cognitoUserPoolsTokenProvider.setKeyValueStorage(new CookieStorage());
+cognitoUserPoolsTokenProvider.setKeyValueStorage(defaultStorage);
 
-
-    Amplify.configure( {
-        Auth: {
-            Cognito: {
-                userPoolClientId: secrets.CLIENT_ID as string,
-                userPoolId: secrets.USER_POOL_ID as string,
-                signUpVerificationMethod: 'code',
-            },
+Amplify.configure({
+    Auth: {
+        Cognito: {
+            userPoolClientId: secrets.CLIENT_ID as string,
+            userPoolId: secrets.USER_POOL_ID as string,
+            signUpVerificationMethod: 'code',
         },
-        Storage:{
-            S3:{
-                bucket:"securefile-transfer3c92a-dev",
-                region:"us-east-1"
-            }
+    },
+    Storage: {
+        S3: {
+            bucket: 'securefile-transfer3c92a-dev',
+            region: 'us-east-1',
         },
-    });
+    },
+});
 
+function generateUserName(email: string): string {
+    const raw = email.toLowerCase();
+    return crypto
+        .createHash('sha256')
+        .update(raw)
+        .digest('hex')
+        .slice(0, 32);
+}
 
+server.get('/ping', async (request, reply) => {
+    return 'pong\n';
+});
 
-    function generateUserName(email: string): string {
-        const raw = email.toLowerCase();
-        return crypto.createHash('sha256').update(raw).digest('hex').slice(0, 32);
-    }
-
-    server.get('/ping', async (request, reply) => {
-        return 'pong\n';
-    });
-
-    server.post(
-        '/register',
-        {
-            schema: {
-                body: {
-                    type: 'object',
-                    required: ['firstName', 'lastName', 'email', 'password', 'zoneinfo'],
-                    properties: {
-                        firstName: { type: 'string', minLength: 1 },
-                        lastName: { type: 'string', minLength: 1 },
-                        email: { type: 'string', format: 'email' },
-                        password: { type: 'string', minLength: 8 },
-                        zoneinfo: { type: 'string', minLength: 2 },
-                    },
+server.post(
+    '/register',
+    {
+        schema: {
+            body: {
+                type: 'object',
+                required: ['firstName', 'lastName', 'email', 'password', 'zoneinfo'],
+                properties: {
+                    firstName: { type: 'string', minLength: 1 },
+                    lastName: { type: 'string', minLength: 1 },
+                    email: { type: 'string', format: 'email' },
+                    password: { type: 'string', minLength: 8 },
+                    zoneinfo: { type: 'string', minLength: 2 },
                 },
             },
         },
-        async (request, reply) => {
-            const { firstName, lastName, email, password, zoneinfo } = request.body as {
-                firstName: string;
-                lastName: string;
-                email: string;
-                password: string;
-                zoneinfo: string;
-            };
-
-            try {
-                const userName = generateUserName(email);
-
-                const result = await signUp({
-                    username: userName,
-                    password: password,
-                    options: {
-                        userAttributes: {
-                            email: email,
-                            given_name: firstName,
-                            family_name: lastName,
-                            zoneinfo: zoneinfo,
-                        },
-                    },
-                });
-
-                reply.code(200).send({
-                    success: true,
-                    data: { username: userName },
-                });
-            } catch (err) {
-                let message = 'Unknown error';
-
-                console.log(err);
-
-                if ((err as Error).name === 'UsernameExistsException') {
-                    message = 'Email already registered';
-                } else if ((err as Error).name === 'InvalidPasswordException') {
-                    message = 'Password does not meet complexity requirements';
-                } else if ((err as Error).name === 'CodeMismatchException') {
-                    message = 'Invalid verification code';
-                } else if ((err as Error).name === 'ExpiredCodeException') {
-                    message = 'Verification code expired';
-                } else {
-                    message = (err as Error).name;
-                }
-
-                reply.code(400).send({ success: false, error: (err as Error).message, details: message });
-            }
-        },
-    );
-
-    server.post('/confirm', async (request, reply) => {
-        const { username, confirmationCode } = request.body as { username: string; confirmationCode: string };
-        console.log(`Confirming sign up for ${username} with code ${confirmationCode}`);
-
-        try {
-            const result = await confirmSignUp({
-                username: username,
-                confirmationCode: confirmationCode,
-            });
-            console.log(result.isSignUpComplete ? 'User confirmed successfully.' : result.nextStep.signUpStep);
-
-            if (result.nextStep.signUpStep === 'COMPLETE_AUTO_SIGN_IN') {
-                const { nextStep } = await autoSignIn();
-
-                if (nextStep.signInStep === 'DONE') {
-                    console.log('Successfully signed in.');
-                }
-            }
-            return reply.code(200).send({
-                success: true,
-                message: result.isSignUpComplete ? 'User confirmed successfully.' : 'Further steps required.',
-                data: { nextStep: result.nextStep?.signUpStep ?? 'DONE' },
-            });
-        } catch (err) {
-            let message = '';
-            switch (err) {
-                case 'ExpiredCodeException':
-                    message = 'The confirmation code has expired.';
-                    break;
-                default:
-                    message = (err as Error).message;
-                    break;
-            }
-            console.error('Signup error:', JSON.stringify(err, null, 2));
-            reply.code(400).send({ code: (err as Error).name, error: message, success: false });
-        }
-    });
-
-    server.post('/resend-confirmation', async (request, reply) => {
-        const { email } = request.body as { email: string };
-        console.log(`Resending confirmation for ${email}`);
-
-        try {
-            // const result = await resendSignUpCode({
-            //     username: email,
-            // });
-            const command = new ResendConfirmationCodeCommand({
-                ClientId: secrets.CLIENT_ID!,
-                Username: email,
-            });
-            const result = await cognitoClient.send(command);
-
-            reply.code(200).send({
-                success: true,
-                data: result,
-            });
-        } catch (err) {
-            console.error('Resend confirmation error:', JSON.stringify(err, null, 2));
-            reply.code(400).send({ error: (err as Error).message, success: false });
-        }
-    });
-
-    server.post("/login", async (request, reply) => {
-        const { email, password } = request.body as {
+    },
+    async (request, reply) => {
+        const { firstName, lastName, email, password, zoneinfo } = request.body as {
+            firstName: string;
+            lastName: string;
             email: string;
             password: string;
+            zoneinfo: string;
         };
 
         try {
-             const command = new InitiateAuthCommand({
-            AuthFlow: "USER_PASSWORD_AUTH",
+            const userName = generateUserName(email);
+
+            const result = await signUp({
+                username: userName,
+                password: password,
+                options: {
+                    userAttributes: {
+                        email: email,
+                        given_name: firstName,
+                        family_name: lastName,
+                        zoneinfo: zoneinfo,
+                    },
+                },
+            });
+
+            reply.code(200).send({
+                success: true,
+                data: { username: userName },
+            });
+        } catch (err) {
+            let message = 'Unknown error';
+
+            console.log(err);
+
+            if ((err as Error).name === 'UsernameExistsException') {
+                message = 'Email already registered';
+            } else if ((err as Error).name === 'InvalidPasswordException') {
+                message = 'Password does not meet complexity requirements';
+            } else if ((err as Error).name === 'CodeMismatchException') {
+                message = 'Invalid verification code';
+            } else if ((err as Error).name === 'ExpiredCodeException') {
+                message = 'Verification code expired';
+            } else {
+                message = (err as Error).name;
+            }
+
+            reply.code(400).send({ success: false, error: (err as Error).message, details: message });
+        }
+    },
+);
+
+server.post('/confirm', async (request, reply) => {
+    const { username, confirmationCode } = request.body as { username: string; confirmationCode: string };
+    console.log(`Confirming sign up for ${username} with code ${confirmationCode}`);
+
+    try {
+        const result = await confirmSignUp({
+            username: username,
+            confirmationCode: confirmationCode,
+        });
+        console.log(result.isSignUpComplete ? 'User confirmed successfully.' : result.nextStep.signUpStep);
+
+        if (result.nextStep.signUpStep === 'COMPLETE_AUTO_SIGN_IN') {
+            const { nextStep } = await autoSignIn();
+
+            if (nextStep.signInStep === 'DONE') {
+                console.log('Successfully signed in.');
+            }
+        }
+        return reply.code(200).send({
+            success: true,
+            message: result.isSignUpComplete ? 'User confirmed successfully.' : 'Further steps required.',
+            data: { nextStep: result.nextStep?.signUpStep ?? 'DONE' },
+        });
+    } catch (err) {
+        let message = '';
+        switch (err) {
+            case 'ExpiredCodeException':
+                message = 'The confirmation code has expired.';
+                break;
+            default:
+                message = (err as Error).message;
+                break;
+        }
+        console.error('Signup error:', JSON.stringify(err, null, 2));
+        reply.code(400).send({ code: (err as Error).name, error: message, success: false });
+    }
+});
+
+server.post('/resend-confirmation', async (request, reply) => {
+    const { email } = request.body as { email: string };
+    console.log(`Resending confirmation for ${email}`);
+
+    try {
+        const result = await resendSignUpCode({
+            username: email,
+        });
+        reply.code(200).send({
+            success: true,
+            data: result,
+        });
+    } catch (err) {
+        console.error('Resend confirmation error:', JSON.stringify(err, null, 2));
+        reply.code(400).send({ error: (err as Error).message, success: false });
+    }
+});
+
+server.post('/login', async (request, reply) => {
+    const { email, password } = request.body as {
+        email: string;
+        password: string;
+    };
+
+    try {
+         const command = new InitiateAuthCommand({
+            AuthFlow: 'USER_PASSWORD_AUTH',
             ClientId: secrets.CLIENT_ID!,
             AuthParameters: {
                 USERNAME: email,
                 PASSWORD: password,
             },
-            });
+        });
 
-            const response = await cognitoClient.send(command);
+        const response = await cognitoClient.send(command);
 
-            if (response.AuthenticationResult) {
-                const accessToken = response.AuthenticationResult.AccessToken;
-                const idToken = response.AuthenticationResult.IdToken;
+        if (response.AuthenticationResult) {
+            const accessToken = response.AuthenticationResult.AccessToken;
+            const idToken = response.AuthenticationResult.IdToken;
 
-                // Lấy user info
-                const userResponse = await cognitoClient.send(
-                    new GetUserCommand({ AccessToken: accessToken! })
-                );
+            // Lấy user info
+            const userResponse = await cognitoClient.send(new GetUserCommand({ AccessToken: accessToken! }));
 
-                const attributes: Record<string, string> = {};
-                userResponse.UserAttributes?.forEach(attr => {
-                    if (attr.Name && attr.Value) {
+            const attributes: Record<string, string> = {};
+            userResponse.UserAttributes?.forEach((attr) => {
+                if (attr.Name && attr.Value) {
                     attributes[attr.Name] = attr.Value;
-                    }
-                });
-                const tokens = {
-                    accessToken: accessToken,
-                    idToken: idToken,
-                    userId: attributes.sub,
-                    userName: userResponse.Username,
-                    email: attributes.email,
-                    firstName: attributes.given_name,
-                    lastName: attributes.family_name,
-                    zoneinfo: attributes.zoneinfo,
-                };
-
-                return reply.code(200).send({
-                    success: true,
-                    result: tokens,
-                });
-            }
-
-            return reply.code(400).send({
-            success: false,
-            error: "CHALLENGE_REQUIRED",
-            nextStep: response.ChallengeName,
+                }
             });
-        } catch (err) {
-            console.error("Login error:", err);
-            return reply.code(401).send({
-            success: false,
-            error: (err as Error).message,
-            });
-            console.error("Login error:", err);
-            return reply.code(401).send({
-            success: false,
-            error: (err as Error).message,
-            });
-        }
-    });
-
-
-    server.put("/change-password", async (request, reply) => {
-        // const { oldPassword, newPassword, confirmNewPassword } = request.body as {
-        //     oldPassword: string;
-        //     newPassword: string;
-        //     confirmNewPassword: string;
-        // };
-        const authHeader = request.headers["authorization"];
-        const accessToken = authHeader?.split(" ")[1]; 
-        if (!accessToken) {
-            return reply.code(401).send({
-            success: false,
-            error: "Access token is required",
-            });
-        }
-
-        const { oldPassword, newPassword, confirmNewPassword } = request.body as {
-            oldPassword: string;
-            newPassword: string;
-            confirmNewPassword: string;
-        };
-
-        if (!oldPassword || !newPassword || !confirmNewPassword) {
-            return reply.code(400).send({
-            success: false,
-            error: "All fields are required",
-            });
-        }
-
-        if (newPassword !== confirmNewPassword) {
-            return reply.code(400).send({
-            success: false,
-            error: "New password and confirmation do not match",
-            });
-        }
-
-        try {
-            // await updatePassword({
-            // oldPassword,
-            // newPassword,
-            // });
-
-            const command = new ChangePasswordCommand({
-                PreviousPassword: oldPassword,
-                ProposedPassword: newPassword,
-                AccessToken: accessToken,
-            });
-            await cognitoClient.send(command);
+            const tokens = {
+                accessToken: accessToken,
+                idToken: idToken,
+                userId: attributes.sub,
+                userName: userResponse.Username,
+                email: attributes.email,
+                firstName: attributes.given_name,
+                lastName: attributes.family_name,
+                zoneinfo: attributes.zoneinfo,
+            };
 
             return reply.code(200).send({
-            success: true,
-            message: "Password updated successfully",
+                success: true,
+                result: tokens,
             });
-        } catch (err) {
-            console.error("Error changing password:", err);
-            return reply.code(400).send({
+        }
+
+        return reply.code(400).send({
+            success: false,
+            error: 'CHALLENGE_REQUIRED',
+            nextStep: response.ChallengeName,
+        });
+    } catch (err) {
+            console.error("Login error:", err);
+            return reply.code(401).send({
             success: false,
             error: (err as Error).message,
             });
-        }
-    });
+        console.error('Login error:', err);
+        return reply.code(401).send({
+            success: false,
+            error: (err as Error).message,
+        });
+    }
+});
 
-    server.post(
-    "/update-profile",
+server.put('/change-password', async (request, reply) => {
+    const authHeader = request.headers['authorization'];
+    const accessToken = authHeader?.split(' ')[1];
+    if (!accessToken) {
+        return reply.code(401).send({
+            success: false,
+            error: 'Access token is required',
+        });
+    }
+
+    const { oldPassword, newPassword, confirmNewPassword } = request.body as {
+        oldPassword: string;
+        newPassword: string;
+        confirmNewPassword: string;
+    };
+
+    if (!oldPassword || !newPassword || !confirmNewPassword) {
+        return reply.code(400).send({
+            success: false,
+            error: 'All fields are required',
+        });
+    }
+
+    if (newPassword !== confirmNewPassword) {
+        return reply.code(400).send({
+            success: false,
+            error: 'New password and confirmation do not match',
+        });
+    }
+
+    try {
+        const command = new ChangePasswordCommand({
+            PreviousPassword: oldPassword,
+            ProposedPassword: newPassword,
+            AccessToken: accessToken,
+        });
+        await cognitoClient.send(command);
+
+        return reply.code(200).send({
+            success: true,
+            message: 'Password updated successfully',
+        });
+    } catch (err) {
+        console.error('Error changing password:', err);
+        return reply.code(400).send({
+            success: false,
+            error: (err as Error).message,
+        });
+    }
+});
+
+server.post(
+    '/update-profile',
     {
         schema: {
-        body: {
-            type: "object",
-            required: ["firstName", "lastName", "zoneinfo"],
-            properties: {
-            firstName: { type: "string", minLength: 1 },
-            lastName: { type: "string", minLength: 1 },
-            zoneinfo: { type: "string", minLength: 2 },
+            body: {
+                type: 'object',
+                required: ['firstName', 'lastName', 'zoneinfo'],
+                properties: {
+                    firstName: { type: 'string', minLength: 1 },
+                    lastName: { type: 'string', minLength: 1 },
+                    zoneinfo: { type: 'string', minLength: 2 },
+                },
             },
-        },
         },
     },
     async (request, reply) => {
-        // const { firstName, lastName, zoneinfo } = request.body as {
-        // firstName: string;
-        // lastName: string;
-        // zoneinfo: string;
-        // };
-        const authHeader = request.headers["authorization"];
-        const accessToken = authHeader?.split(" ")[1]; 
+        const authHeader = request.headers['authorization'];
+        const accessToken = authHeader?.split(' ')[1];
         if (!accessToken) {
             return reply.code(401).send({
-            success: false,
-            error: "Access token is required",
+                success: false,
+                error: 'Access token is required',
             });
         }
 
@@ -538,185 +515,170 @@ async function updateFile(){
         };
 
         try {
-        // const user = await getCurrentUser();
-        // const attributes = await fetchUserAttributes();
-
-        // await updateUserAttributes({
-        //     userAttributes: {
-        //     given_name: firstName,
-        //     family_name: lastName,
-        //     zoneinfo: zoneinfo,
-        //     },
-        // });
-
-        const getUserCommand = new GetUserCommand({
-            AccessToken: accessToken,
-        });
-        const userResponse = await cognitoClient.send(getUserCommand);  
-        const attributes: Record<string, string> = {};
-        userResponse.UserAttributes?.forEach(attr => {
-            if (attr.Name && attr.Value) {
-            attributes[attr.Name] = attr.Value;
-            }
-        });
-        const user = {
-            userId: attributes.sub!,
-            username: userResponse.Username!,
-            email: attributes.email!,
-        };
-        const updateAttributesCommand = new UpdateUserAttributesCommand({
-            UserAttributes: [
-            { Name: "given_name", Value: firstName },
-            { Name: "family_name", Value: lastName },
-            { Name: "zoneinfo", Value: zoneinfo },
-            ],
-            AccessToken: accessToken,
-        });
-        await cognitoClient.send(updateAttributesCommand);  
-
-        reply.code(200).send({
-            success: true,
-            message: "Profile updated successfully",
-            data: {
-            userId: user.userId,
-            username: user.username,
-            email: attributes.email,
-            firstName: firstName,
-            lastName: lastName,
-            zoneinfo: zoneinfo,
-            },
-        });
-        } catch (err) {
-        console.error("Error updating profile:", err);
-
-        reply.code(400).send({
-            success: false,
-            error: (err as Error).message,
-        });
-        }
-    }
-    );
-
-
-    server.post('/sign-out', async (request, reply) => {
-        // await signOut({ global: true });
-        try {
-            const authHeader = request.headers["authorization"];
-            const accessToken = authHeader?.split(" ")[1]; 
-            if (!accessToken) {
-                return reply.code(401).send({
-                success: false,
-                error: "Access token is required",
-                });
-            }
-            const command = new GlobalSignOutCommand({
+            const getUserCommand = new GetUserCommand({
                 AccessToken: accessToken,
             });
-            await cognitoClient.send(command);
-            reply.code(200).send({ success: true });
-        } catch (error) {
-            reply.code(500).send({ error: (error as Error).message, success: false });
-        }
-        
-    });
-
-    server.post('/refresh-token', async (request, reply) => {
-        try {
-            // const result = await fetchAuthSession({ forceRefresh: true });
-            const { refreshToken } = request.body as { refreshToken: string };
-            if (!refreshToken) {
-                return reply.code(400).send({ success: false, error: 'refreshToken is required' });
-            }
-            const result = await cognitoClient.send(
-                new InitiateAuthCommand({
-                    AuthFlow: "REFRESH_TOKEN_AUTH",
-                    ClientId: secrets.CLIENT_ID,
-                    AuthParameters: {
-                    REFRESH_TOKEN: refreshToken
-                    }
-                })
-            );
+            const userResponse = await cognitoClient.send(getUserCommand);
+            const attributes: Record<string, string> = {};
+            userResponse.UserAttributes?.forEach((attr) => {
+                if (attr.Name && attr.Value) {
+                    attributes[attr.Name] = attr.Value;
+                }
+            });
+            const user = {
+                userId: attributes.sub!,
+                username: userResponse.Username!,
+                email: attributes.email!,
+            };
+            const updateAttributesCommand = new UpdateUserAttributesCommand({
+                UserAttributes: [
+                    { Name: 'given_name', Value: firstName },
+                    { Name: 'family_name', Value: lastName },
+                    { Name: 'zoneinfo', Value: zoneinfo },
+                ],
+                AccessToken: accessToken,
+            });
+            await cognitoClient.send(updateAttributesCommand);
 
             reply.code(200).send({
                 success: true,
+                message: 'Profile updated successfully',
                 data: {
-                    accessToken: result.AuthenticationResult?.AccessToken,
-                    idToken: result.AuthenticationResult?.IdToken,
-                    expiresIn: result.AuthenticationResult?.ExpiresIn
+                    userId: user.userId,
+                    username: user.username,
+                    email: attributes.email,
+                    firstName: firstName,
+                    lastName: lastName,
+                    zoneinfo: zoneinfo,
                 },
             });
         } catch (err) {
-            reply.code(401).send({ error: (err as Error).message, success: false });
-        }
-    });
+            console.error('Error updating profile:', err);
 
-    server.delete('/delete-account', async (request, reply) => {
-        const authHeader = request.headers["authorization"];
-        const accessToken = authHeader?.split(" ")[1]; 
-        if (!accessToken) {
-            return reply.code(401).send({
-            success: false,
-            error: "Access token is required",
+            reply.code(400).send({
+                success: false,
+                error: (err as Error).message,
             });
         }
-        try {
-            await cognitoClient.send(
-            new DeleteUserCommand({
-                AccessToken: accessToken 
-            })
-            );
-            reply.code(200).send({ success: true });
-        } catch (err) {
-            reply.code(400).send({ success: false, error: (err as Error).message });
+    },
+);
+
+server.post('/sign-out', async (request, reply) => {
+    try {
+        const authHeader = request.headers['authorization'];
+        const accessToken = authHeader?.split(' ')[1];
+        if (!accessToken) {
+            return reply.code(401).send({
+                success: false,
+                error: 'Access token is required',
+            });
         }
-    });
+        const command = new GlobalSignOutCommand({
+            AccessToken: accessToken,
+        });
+        await cognitoClient.send(command);
+        reply.code(200).send({ success: true });
+    } catch (error) {
+        reply.code(500).send({ error: (error as Error).message, success: false });
+    }
+});
 
-    server.post('/forgot-password', async (request, reply) => {
-        const { email, confirmationCode, newPassword } = request.body as {
-            email: string;
-            confirmationCode?: string;
-            newPassword?: string;
-        };
+server.post('/refresh-token', async (request, reply) => {
+    try {
+        const { refreshToken } = request.body as { refreshToken: string };
+        if (!refreshToken) {
+            return reply.code(400).send({ success: false, error: 'refreshToken is required' });
+        }
+        const result = await cognitoClient.send(
+            new InitiateAuthCommand({
+                AuthFlow: 'REFRESH_TOKEN_AUTH',
+                ClientId: secrets.CLIENT_ID,
+                AuthParameters: {
+                    REFRESH_TOKEN: refreshToken,
+                },
+            }),
+        );
 
-        try {
-            if (!confirmationCode) {
-                const output = await resetPassword({ username: email });
-                const { nextStep } = output;
+        reply.code(200).send({
+            success: true,
+            data: {
+                accessToken: result.AuthenticationResult?.AccessToken,
+                idToken: result.AuthenticationResult?.IdToken,
+                expiresIn: result.AuthenticationResult?.ExpiresIn,
+            },
+        });
+    } catch (err) {
+        reply.code(401).send({ error: (err as Error).message, success: false });
+    }
+});
 
-                if (nextStep.resetPasswordStep === 'CONFIRM_RESET_PASSWORD_WITH_CODE') {
-                    return reply.code(200).send({
-                        success: true,
-                        step: 'CODE_SENT',
-                        delivery: nextStep.codeDeliveryDetails,
-                    });
-                }
-            } else {
-                if (!newPassword) {
-                    return reply.code(400).send({ success: false, error: 'newPassword is required' });
-                }
+server.delete('/delete-account', async (request, reply) => {
+    const authHeader = request.headers['authorization'];
+    const accessToken = authHeader?.split(' ')[1];
+    if (!accessToken) {
+        return reply.code(401).send({
+            success: false,
+            error: 'Access token is required',
+        });
+    }
+    try {
+        await cognitoClient.send(
+            new DeleteUserCommand({
+                AccessToken: accessToken,
+            }),
+        );
+        reply.code(200).send({ success: true });
+    } catch (err) {
+        reply.code(400).send({ success: false, error: (err as Error).message });
+    }
+});
 
-                await confirmResetPassword({
-                    username: email,
-                    confirmationCode: confirmationCode,
-                    newPassword: newPassword,
-                });
+server.post('/forgot-password', async (request, reply) => {
+    const { email, confirmationCode, newPassword } = request.body as {
+        email: string;
+        confirmationCode?: string;
+        newPassword?: string;
+    };
 
+    try {
+        if (!confirmationCode) {
+            const output = await resetPassword({ username: email });
+            const { nextStep } = output;
+
+            if (nextStep.resetPasswordStep === 'CONFIRM_RESET_PASSWORD_WITH_CODE') {
                 return reply.code(200).send({
                     success: true,
-                    step: 'DONE',
-                    message: 'Password reset successfully',
+                    step: 'CODE_SENT',
+                    delivery: nextStep.codeDeliveryDetails,
                 });
             }
-        } catch (err) {
-            return reply.code(500).send({ success: false, error: (err as Error).message });
+        } else {
+            if (!newPassword) {
+                return reply.code(400).send({ success: false, error: 'newPassword is required' });
+            }
+
+            await confirmResetPassword({
+                username: email,
+                confirmationCode: confirmationCode,
+                newPassword: newPassword,
+            });
+
+            return reply.code(200).send({
+                success: true,
+                step: 'DONE',
+                message: 'Password reset successfully',
+            });
         }
-    });
+    } catch (err) {
+        return reply.code(500).send({ success: false, error: (err as Error).message });
+    }
+});
 
-    // '''
-    // FILE OPERATIONS
-    // '''
+// '''
+// FILE OPERATIONS
+// '''
 
-    // 
+//
 
     server.post('/file/:userId', async function (req, reply) {
         try {
@@ -1010,34 +972,36 @@ async function updateFile(){
         reply.code(500).send({ error: (error as Error).message, success: false });
     }
 });
+        return reply.code(200).send({ success: true, data: results });
+    } catch (error) {
+        reply.code(500).send({ error: (error as Error).message, success: false });
+    }
+});
 
+server.get('/user/file/:userId', async function(req, reply) {
+    try {
+        // Get user Id as a request parameter
+        const { userId } = req.params as {
+            userId: string;
+        };
 
-    server.get('/user/file/:userId', async function (req, reply){
-        try {
-            // Get user Id as a request parameter
-            const {userId} = req.params as {
-                userId: string
-            }
-
-            // Get all files with the user iD attached to them
-            const command = new QueryCommand ({
-                TableName: "Files",
-                IndexName: "user_id-index",
-                KeyConditionExpression: "user_id = :u",
-                ExpressionAttributeValues: {
-            ":u": { S: userId },
+        // Get all files with the user iD attached to them
+        const command = new QueryCommand({
+            TableName: 'Files',
+            IndexName: 'user_id-index',
+            KeyConditionExpression: 'user_id = :u',
+            ExpressionAttributeValues: {
+                ':u': { S: userId },
             },
-            });
+        });
 
+        // Execute command
+        const response = await docClient.send(command);
 
-            // Execute command
-            const response = await docClient.send(command)
+        const userFiles = response.Items!.map((item) => unmarshall(item));
 
-            const userFiles = response.Items!.map(item => unmarshall(item))
-
-            // Count the files
-            const fileCount = userFiles.length;
-
+        // Count the files
+        const fileCount = userFiles.length;
 
             // Reply with user file information
             reply.code(200).send({data:userFiles,success: true,  totalFiles: fileCount})

@@ -7,9 +7,7 @@ function ConfirmEmail({ username, email, onClose }) {
   );
   const navigate = useNavigate();
   const inputsRef = useRef([]);
-  const API_URL =
-    process.env.REACT_APP_API_URL || "https://34.234.70.16.nip.io/";
-  // || "http://localhost:8080";
+  const API_URL = process.env.REACT_APP_API_URL;
 
   useEffect(() => {
     inputsRef.current[0]?.focus();
@@ -64,7 +62,6 @@ function ConfirmEmail({ username, email, onClose }) {
         }),
       });
       const data = await response.json();
-      console.log(data);
       if (response.ok && data.success) {
         alert("Email confirmed successfully");
         navigate("/");
@@ -72,10 +69,31 @@ function ConfirmEmail({ username, email, onClose }) {
         alert("Something went wrong!");
       }
     } catch (error) {
-      console.error(error);
     }
   };
 
+    const handleResend = async () => {
+        try {
+            const response = await fetch(API_URL + "/resend-confirmation", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ email }),
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                const details = data.data.CodeDeliveryDetails;
+                alert(
+                    `A new code has been sent to ${details.Destination} via ${details.DeliveryMedium.toLowerCase()}`
+                );
+            } else {
+                alert("Failed to resend code. Please try again.");
+            }
+        } catch (error) {
+            alert("An error occurred while resending code.");
+        }
+    };
   return (
     <div className="fixed inset-0 flex items-center justify-center bg-black/60 z-50">
       <div className="bg-white p-8 rounded-2xl shadow-md text-center w-[400px] relative">
@@ -119,7 +137,7 @@ function ConfirmEmail({ username, email, onClose }) {
         </form>
         <button
           type="button"
-          onClick={() => alert("Resend OTP logic here")}
+          onClick={handleResend}
           className="mt-4 text-sm text-blue-600 hover:underline"
         >
           Resend Code
