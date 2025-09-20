@@ -1,6 +1,8 @@
 import Logo from "../../assets/Logo.png"
 import {Link} from "react-router-dom";
 function HeroSection() {
+    const isLoggedIn = !!localStorage.getItem("authToken");
+
     return (
         <section className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center px-4 py-12">
             <div className="max-w-4xl mx-auto text-center">
@@ -18,7 +20,7 @@ function HeroSection() {
                     Send and receive files safely with built-in malware detection and identity verification.
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                    <Link to={"/login"} className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-lg transition duration-300 ease-in-out transform hover:-translate-y-1">
+                    <Link to={isLoggedIn ? "/transfer" : "/login"} className="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 px-8 rounded-lg transition duration-300 ease-in-out transform hover:-translate-y-1">
                         Send File
                     </Link>
                     <Link to={"/download-file"} className="bg-white hover:bg-gray-100 text-blue-600 border border-blue-600 font-semibold py-3 px-8 rounded-lg transition duration-300 ease-in-out transform hover:-translate-y-1">
