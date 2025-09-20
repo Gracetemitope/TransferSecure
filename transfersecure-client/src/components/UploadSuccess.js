@@ -10,7 +10,7 @@ function UploadSuccess() {
     const [copied, setCopied] = useState(false);
 
     const handleCopy = () => {
-        navigator.clipboard.writeText("http://transfersecure.com/57959575");
+        navigator.clipboard.writeText(fileURL);
         setCopied(true);
         setTimeout(() => { setCopied(false); }, 2000);
     }
