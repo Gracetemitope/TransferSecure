@@ -875,7 +875,7 @@ async function updateFile(){
             // Generate download URL
             const command1 = new GetObjectCommand({ Bucket: "securefile-transfer3c92a-dev", Key: fileKey });
             const expires = sec! * 86400
-            const downloadUrl = await getSignedUrl(s3Client, command1, { expiresIn: expires});
+            const downloadUrl = await getSignedUrl(s3Client, command1, { expiresIn: expires || 2592000});
 
             // Push non malicious file
             
