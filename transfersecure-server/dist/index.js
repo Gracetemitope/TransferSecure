@@ -685,7 +685,7 @@ server.post('/file/:userId', async function (req, reply) {
                 // Generate download URL
                 const command1 = new GetObjectCommand({ Bucket: "securefile-transfer3c92a-dev", Key: fileKey });
                 const expires = sec * 86400;
-                const downloadUrl = await getSignedUrl(s3Client, command1, { expiresIn: expires || 2592000 });
+                const downloadUrl = await getSignedUrl(s3Client, command1, { expiresIn: expires || 604799 });
                 // Push non malicious file
                 results.push({ filename: part.filename, url: downloadUrl, malicious: false, email: email, size: (totalBytes / 1024 / 1024).toFixed(2) });
                 // Remove temp file
