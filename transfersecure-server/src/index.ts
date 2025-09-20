@@ -227,15 +227,9 @@ async function main() {
         console.log(`Resending confirmation for ${email}`);
 
         try {
-            // const result = await resendSignUpCode({
-            //     username: email,
-            // });
-            const command = new ResendConfirmationCodeCommand({
-                ClientId: secrets.CLIENT_ID!,
-                Username: email,
+            const result = await resendSignUpCode({
+                username: email,
             });
-            const result = await cognitoClient.send(command);
-
             reply.code(200).send({
                 success: true,
                 data: result,
@@ -312,11 +306,6 @@ async function main() {
 
 
     server.put("/change-password", async (request, reply) => {
-        // const { oldPassword, newPassword, confirmNewPassword } = request.body as {
-        //     oldPassword: string;
-        //     newPassword: string;
-        //     confirmNewPassword: string;
-        // };
         const authHeader = request.headers["authorization"];
         const accessToken = authHeader?.split(" ")[1]; 
         if (!accessToken) {
@@ -347,11 +336,6 @@ async function main() {
         }
 
         try {
-            // await updatePassword({
-            // oldPassword,
-            // newPassword,
-            // });
-
             const command = new ChangePasswordCommand({
                 PreviousPassword: oldPassword,
                 ProposedPassword: newPassword,
@@ -388,11 +372,6 @@ async function main() {
         },
     },
     async (request, reply) => {
-        // const { firstName, lastName, zoneinfo } = request.body as {
-        // firstName: string;
-        // lastName: string;
-        // zoneinfo: string;
-        // };
         const authHeader = request.headers["authorization"];
         const accessToken = authHeader?.split(" ")[1]; 
         if (!accessToken) {
@@ -409,17 +388,6 @@ async function main() {
         };
 
         try {
-        // const user = await getCurrentUser();
-        // const attributes = await fetchUserAttributes();
-
-        // await updateUserAttributes({
-        //     userAttributes: {
-        //     given_name: firstName,
-        //     family_name: lastName,
-        //     zoneinfo: zoneinfo,
-        //     },
-        // });
-
         const getUserCommand = new GetUserCommand({
             AccessToken: accessToken,
         });
@@ -470,7 +438,6 @@ async function main() {
 
 
     server.post('/sign-out', async (request, reply) => {
-        // await signOut({ global: true });
         try {
             const authHeader = request.headers["authorization"];
             const accessToken = authHeader?.split(" ")[1]; 
@@ -493,7 +460,6 @@ async function main() {
 
     server.post('/refresh-token', async (request, reply) => {
         try {
-            // const result = await fetchAuthSession({ forceRefresh: true });
             const { refreshToken } = request.body as { refreshToken: string };
             if (!refreshToken) {
                 return reply.code(400).send({ success: false, error: 'refreshToken is required' });
