@@ -34,8 +34,7 @@ root.render(
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="/transfer" element={<ProtectedRoute><TransferFile /> </ProtectedRoute>} />
             <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-            {/*<Route path="/malicious-file" element={<ProtectedRoute><MaliciousFile /></ProtectedRoute>} />*/}
-            <Route path="malicious" element={<MaliciousFile />} />
+            <Route path="/malicious-file" element={<ProtectedRoute><MaliciousFile /></ProtectedRoute>} />
             <Route path="/upload-successful" element={
                 <ProtectedRoute>
                     <UploadSuccess />
