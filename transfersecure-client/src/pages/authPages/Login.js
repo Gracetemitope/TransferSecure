@@ -13,7 +13,7 @@ function Login() {
     const [loading, setLoading] = useState(false);
     const [errorMessage, setErrorMessage] = useState("");
 
-    const API_URL = process.env.REACT_APP_API_URL || "https://34.234.70.16.nip.io/";
+    const API_URL = process.env.REACT_APP_API_URL;
 
     const handleChange = (e) =>
         setFormData({ ...formData, [e.target.name]: e.target.value });

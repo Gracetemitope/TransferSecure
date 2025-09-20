@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo } from "react";
 function ViewProfile() {
     const [isEditing, setIsEditing] = useState(false);
     const [loading, setLoading] = useState(false);
-    const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8080";
+    const API_URL = process.env.REACT_APP_API_URL;
     const token = localStorage.getItem("authToken");
 
     const [form, setForm] = useState({
