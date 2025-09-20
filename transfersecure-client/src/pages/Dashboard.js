@@ -34,7 +34,7 @@ function Dashboard() {
                         <BreadCrumb
                             items={[
                                 { label: "Home", to: "/"},
-                                { label: "Upload file"}
+                                { label: "Dashboard"}
                             ]}
                         />
             <div className="space-y-6">
