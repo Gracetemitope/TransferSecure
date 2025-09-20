@@ -3,6 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import Logo from "../../assets/Logo.png";
 import AuthFooter from "./AuthFooter";
 import ConfirmEmail from "./ConfirmEmail";
+import { CountryDropdown } from "react-country-region-selector";
 
 function Register() {
     const [formState, setFormState] = useState({
@@ -25,13 +26,18 @@ function Register() {
         setErrorMessage("");
     };
 
+    const handleCountryChange = (country) => {
+        setFormState({ ...formState, country });
+        setErrorMessage("");
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
         setErrorMessage("");
 
         try {
-            const response = await fetch(API_URL + "/register", {
+            const response = await fetch(`${API_URL}/register`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
@@ -50,22 +56,21 @@ function Register() {
                 setShowConfirm(true);
             } else {
                 let message = "";
-
                 if (data.error && data.error.includes("Password did not conform")) {
                     message = "Password must contain uppercase, special characters and numeric";
                 } else {
                     message = "Account registration unsuccessful. Please try again";
                 }
-
                 setErrorMessage(message);
             }
-            } catch (error) {
+        } catch (error) {
             console.error(error);
             setErrorMessage("Something went wrong. Please try again later.");
         } finally {
             setLoading(false);
         }
     };
+
     return (
         <div className="flex flex-col items-center justify-center min-h-screen bg-white">
             <main className="flex-grow flex items-center justify-center">
@@ -73,7 +78,7 @@ function Register() {
                     <div className="w-full max-w-md p-6">
                         <div className="flex justify-center mb-6">
                             <Link to="/">
-                            <img src={Logo} alt="logo" className="h-10" />
+                                <img src={Logo} alt="logo" className="h-10" />
                             </Link>
                         </div>
                         <h1 className="text-2xl mt-8 text-center font-sans font-bold mb-4">
@@ -88,6 +93,7 @@ function Register() {
                                 {errorMessage}
                             </div>
                         )}
+
                         <form onSubmit={handleSubmit} className="mt-4 space-y-4">
                             <div className="flex space-x-4">
                                 <input
@@ -110,15 +116,16 @@ function Register() {
                                 />
                             </div>
 
-                            <input
+                            {/* Country selector */}
+
+                            <CountryDropdown
                                 className="w-full px-4 py-3 rounded-full bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                                name="country"
-                                type="text"
-                                placeholder="Country"
                                 value={formState.country}
-                                onChange={handleChange}
+                                onChange={(val) => setFormState({ ...formState, country: val })}
+                                placeholder="Select your country"
                                 required
                             />
+
                             <input
                                 className="w-full px-4 py-3 rounded-full bg-gray-50 border border-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500"
                                 name="email"

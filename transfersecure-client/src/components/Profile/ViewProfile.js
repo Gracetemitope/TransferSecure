@@ -6,7 +6,6 @@ function ViewProfile() {
     const API_URL = process.env.REACT_APP_API_URL || "http://localhost:8080";
     const token = localStorage.getItem("authToken");
 
-    // form values (editable)
     const [form, setForm] = useState({
         firstName: "",
         lastName: "",
@@ -14,7 +13,6 @@ function ViewProfile() {
         email: "",
     });
 
-    // original values to compare for changes
     const [originalValues, setOriginalValues] = useState({
         firstName: "",
         lastName: "",
@@ -22,7 +20,6 @@ function ViewProfile() {
         email: "",
     });
 
-    // load initial values from localStorage on mount (checking multiple keys for zone/country)
     useEffect(() => {
         const initial = {
             firstName: localStorage.getItem("firstName") || "",
@@ -30,10 +27,7 @@ function ViewProfile() {
                 localStorage.getItem("lastName") ||
                 localStorage.getItem("family_name") ||
                 "",
-            zoneinfo:
-                localStorage.getItem("zoneinfo") ||
-                localStorage.getItem("country") ||
-                "",
+            zoneinfo: localStorage.getItem("country") || localStorage.getItem("zoneinfo") || "",
             email: localStorage.getItem("email") || "",
         };
 
@@ -45,11 +39,9 @@ function ViewProfile() {
         setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
     };
 
-    // helpful small util that trims and normalizes strings when comparing
     const changed = (a, b) =>
         String(a ?? "").trim() !== String(b ?? "").trim();
 
-    // compute whether any editable value actually changed (memoized)
     const hasChanges = useMemo(
         () =>
             changed(form.firstName, originalValues.firstName) ||
@@ -61,7 +53,6 @@ function ViewProfile() {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        // If user somehow clicked Save without changing anything, do nothing (quietly exit edit)
         if (!hasChanges) {
             setIsEditing(false);
             return;
@@ -84,26 +75,21 @@ function ViewProfile() {
                 }),
             });
 
-            // parse JSON safely
             let result = null;
             try {
                 result = await response.json();
             } catch (err) {
-                // no JSON body
                 result = null;
             }
 
             if (response.ok && (result === null || result.success === true || result.status === "ok")) {
-                // success (allow for backends that return different shapes)
                 alert((result && result.message) || "Profile updated successfully!");
 
-                // update localStorage so other parts of the app reflect new values
                 localStorage.setItem("firstName", form.firstName);
                 localStorage.setItem("lastName", form.lastName);
                 localStorage.setItem("zoneinfo", form.zoneinfo);
                 localStorage.setItem("country", form.zoneinfo);
 
-                // update original values and leave edit mode
                 setOriginalValues({ ...form });
                 setIsEditing(false);
             } else {
@@ -121,12 +107,10 @@ function ViewProfile() {
     };
 
     const handleCancel = () => {
-        // revert form to original values
         setForm({ ...originalValues });
         setIsEditing(false);
     };
 
-    // prevent Enter from submitting form if you want (optional)
     const handleKeyPress = (e) => {
         if (e.key === "Enter") {
             e.preventDefault();
@@ -158,7 +142,6 @@ function ViewProfile() {
                     )}
                 </div>
 
-                {/* Last Name */}
                 <div>
                     <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
                     {isEditing ? (
@@ -178,7 +161,6 @@ function ViewProfile() {
                     )}
                 </div>
 
-                {/* Email (read-only display) */}
                 <div className="md:col-span-2">
                     <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
                     <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
