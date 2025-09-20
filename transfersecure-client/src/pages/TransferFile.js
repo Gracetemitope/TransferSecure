@@ -108,7 +108,6 @@ function TransferFile() {
                                 <option value="">Select file duration</option>
                                 <option value="1d">1 day</option>
                                 <option value="7d">7 days</option>
-                                <option value="30d">30 days</option>
                             </select>
                         </div>
                         <div className={"flex flex-col items-center justify-center border-2 border-dashed bg-[#F6F5FF] border-[#211A94]" }>
