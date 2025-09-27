@@ -34,7 +34,7 @@ function TransferFile() {
             });
             const data = await response.json();
             if(response.ok) {
-                if (data.malicious === true) {
+                if (data.success && data.data[0].malicious === true) {
                     navigate("/malicious-file");
                 } else {
                 const fileData = data.data[0]
