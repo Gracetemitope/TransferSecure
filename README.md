@@ -87,7 +87,7 @@ npm install
 npm run start
 ```
 
-#### By default, the backend runs at:
+#### By default, the frontend runs at:
 
 ```bash
 http://localhost:3000
